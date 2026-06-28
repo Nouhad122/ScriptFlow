@@ -1,8 +1,24 @@
 /**
- * ClaudeService — the single communication channel between this application and the Anthropic API.
+ * AIService — the single communication channel between this application and the AI provider.
+ *
+ * WHY THIS ABSTRACTION EXISTS:
+ *   Agents depend on AIService, not on any specific SDK (Gemini, OpenAI, Anthropic, etc.).
+ *   This means the choice of AI provider is an infrastructure detail hidden behind this
+ *   class. Swapping providers requires changing only this file — no agent, orchestrator,
+ *   or route is aware of which vendor is being called.
+ *
+ *   This is the Dependency Inversion Principle: high-level modules (agents) depend on
+ *   an abstraction (AIService), not on low-level details (Gemini SDK).
+ *
+ * HOW TO SWAP PROVIDERS:
+ *   1. Install the new provider's SDK.
+ *   2. Rewrite the private methods in this file to use the new SDK.
+ *   3. Update ai.config.ts with the new model name.
+ *   4. Update env.ts and .env.example with the new API key variable.
+ *   Zero changes to agents, orchestrators, controllers, or prompts.
  *
  * RESPONSIBILITIES:
- *   - Initialize and manage the Anthropic SDK client
+ *   - Initialize and manage the Gemini SDK client
  *   - Validate the API key before any request is made
  *   - Send prompts and return responses
  *   - Handle and translate SDK errors into typed application errors
@@ -13,33 +29,24 @@
  *   - Prompt engineering (agents own their prompts)
  *   - Business logic (orchestrator owns sequencing)
  *   - Data persistence (memory agent owns storage)
- *
- * HOW AGENTS WILL USE THIS SERVICE:
- *   Each agent receives a ClaudeService instance via constructor injection.
- *   The agent builds its prompt, calls claudeService.generateText() or
- *   claudeService.generateStructured<T>(), and works with the typed result.
- *   The agent never touches the Anthropic SDK directly.
- *
- * WHY THE SERVICE IS SEPARATE FROM AGENTS:
- *   A change to the Claude API (new model, changed error codes, rate limits)
- *   requires modifying only this file. All 6 agents remain untouched.
- *   This is the Open/Closed Principle in practice.
  */
 
-import Anthropic, { APIError } from '@anthropic-ai/sdk';
-import { type ClaudeConfig, claudeConfig } from '../config/claude.config';
-import { ClaudeApiError, JsonParseError, MissingApiKeyError } from '../utils/errors';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { GenerativeModel } from '@google/generative-ai';
+import { type AIConfig, aiConfig } from '../config/ai.config';
+import { env } from '../config/env';
+import { AIProviderError, JsonParseError, MissingApiKeyError } from '../utils/errors';
 import { logAiRequest } from '../utils/logger';
 
-export class ClaudeService {
+export class AIService {
   private readonly apiKey: string;
-  private readonly config: ClaudeConfig;
+  private readonly config: AIConfig;
 
   // Lazily initialised — allows the server to start without a valid key
   // so the health endpoint can report a meaningful error instead of crashing on boot.
-  private client: Anthropic | null = null;
+  private model: GenerativeModel | null = null;
 
-  constructor(apiKey: string, config: ClaudeConfig = claudeConfig) {
+  constructor(apiKey: string, config: AIConfig = aiConfig) {
     this.apiKey = apiKey;
     this.config = config;
   }
@@ -49,58 +56,66 @@ export class ClaudeService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Returns the Anthropic client, validating the key and initialising the
-   * client on first call. Throws MissingApiKeyError if the key is absent.
+   * Returns the Gemini GenerativeModel, validating the key and initialising
+   * on first call. Throws MissingApiKeyError if the key is absent.
+   *
+   * The model is created once and cached. Temperature and maxOutputTokens are
+   * baked into the model at construction time via generationConfig.
    */
-  private ensureClient(): Anthropic {
+  private ensureModel(): GenerativeModel {
     const trimmed = this.apiKey?.trim();
-    if (!trimmed || trimmed === 'your_anthropic_api_key_here') {
+    if (!trimmed || trimmed === 'your_gemini_api_key_here') {
       throw new MissingApiKeyError();
     }
-    if (!this.client) {
-      this.client = new Anthropic({ apiKey: trimmed });
+    if (!this.model) {
+      const genAI = new GoogleGenerativeAI(trimmed);
+      this.model = genAI.getGenerativeModel({
+        model: this.config.model,
+        generationConfig: {
+          temperature: this.config.temperature,
+          maxOutputTokens: this.config.maxTokens,
+        },
+      });
     }
-    return this.client;
+    return this.model;
   }
 
   /**
    * Raw API call — no logging. Called by public methods that own their own
    * log entry. Keeping this private prevents double-logging on retry paths.
    */
-  private async callClaude(prompt: string): Promise<string> {
-    const client = this.ensureClient();
+  private async callAI(prompt: string): Promise<string> {
+    const model = this.ensureModel();
 
     try {
-      const message = await client.messages.create({
-        model: this.config.model,
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-        messages: [{ role: 'user', content: prompt }],
-      });
+      const result = await model.generateContent(prompt);
+      const response = result.response;
 
-      const block = message.content[0];
-      if (block.type !== 'text') {
-        throw new ClaudeApiError(`Unexpected response content type: ${block.type}`);
+      // Surface safety filter blocks as a typed error rather than letting
+      // them produce an empty or undefined text() call downstream.
+      const feedback = response.promptFeedback;
+      if (feedback && feedback.blockReason) {
+        throw new AIProviderError(
+          `Request blocked by Gemini safety filters: ${String(feedback.blockReason)}`
+        );
       }
 
-      return block.text;
+      return response.text();
     } catch (error) {
-      // Re-throw our own errors as-is
-      if (error instanceof MissingApiKeyError || error instanceof ClaudeApiError) {
+      // Re-throw our own typed errors as-is
+      if (error instanceof MissingApiKeyError || error instanceof AIProviderError) {
         throw error;
       }
-      // Translate Anthropic SDK errors into our typed error
-      if (error instanceof APIError) {
-        throw new ClaudeApiError(error.message, error.status);
-      }
-      throw new ClaudeApiError(
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      // Translate Gemini SDK errors into our typed error.
+      // Gemini fetch errors carry a `status` HTTP code on the error object.
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const statusCode = (error as { status?: number }).status;
+      throw new AIProviderError(message, statusCode);
     }
   }
 
   /**
-   * Strips markdown code fences that Claude sometimes adds despite instructions,
+   * Strips markdown code fences that the model sometimes adds despite instructions,
    * then parses the cleaned string as JSON.
    * Throws a native SyntaxError (from JSON.parse) if the string is invalid JSON.
    */
@@ -131,7 +146,7 @@ export class ClaudeService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Sends a plain-text prompt to Claude and returns the response string.
+   * Sends a plain-text prompt to the AI provider and returns the response string.
    *
    * Agents use this for prompts that do not require structured output.
    */
@@ -141,7 +156,7 @@ export class ClaudeService {
     let errorName: string | undefined;
 
     try {
-      const result = await this.callClaude(prompt);
+      const result = await this.callAI(prompt);
       success = true;
       return result;
     } catch (error) {
@@ -159,13 +174,13 @@ export class ClaudeService {
   }
 
   /**
-   * Sends a prompt to Claude and parses the response as a typed JSON value.
+   * Sends a prompt to the AI provider and parses the response as a typed JSON value.
    *
    * Agents use this whenever they need a structured object back (ideas, scores,
    * quality reviews, scripts). The generic parameter T is the expected shape.
    *
    * Retry strategy:
-   *   1. Ask Claude for JSON using the wrapped prompt
+   *   1. Ask the model for JSON using the wrapped prompt
    *   2. If JSON.parse fails, send a one-shot correction prompt
    *   3. If parsing still fails, throw JsonParseError — do not silently proceed
    *
@@ -177,7 +192,7 @@ export class ClaudeService {
     let errorName: string | undefined;
 
     try {
-      const raw = await this.callClaude(this.buildJsonPrompt(prompt));
+      const raw = await this.callAI(this.buildJsonPrompt(prompt));
 
       try {
         const parsed = this.parseJSON<T>(raw);
@@ -190,7 +205,7 @@ export class ClaudeService {
           `Return ONLY the valid JSON object or array from it, ` +
           `with no other text, no code fences, no explanation:\n\n${raw}`;
 
-        const corrected = await this.callClaude(correctionPrompt);
+        const corrected = await this.callAI(correctionPrompt);
 
         try {
           const parsed = this.parseJSON<T>(corrected);
@@ -220,14 +235,13 @@ export class ClaudeService {
 // ---------------------------------------------------------------------------
 
 /**
- * The shared ClaudeService instance used across the application.
+ * The shared AIService instance used across the application.
  *
  * Agents receive this via constructor injection rather than importing it
  * directly — this keeps agents testable with mock service instances.
  *
- * The client is lazily initialised, so importing this module does not
- * throw even when ANTHROPIC_API_KEY is missing. Errors surface on first
- * method call, which is where the health endpoint will catch them.
+ * The Gemini client is lazily initialised, so importing this module does not
+ * throw even when GEMINI_API_KEY is missing. Errors surface on first method
+ * call, which is where the health endpoint will catch them.
  */
-import { env } from '../config/env';
-export const claudeService = new ClaudeService(env.anthropicApiKey);
+export const aiService = new AIService(env.geminiApiKey);

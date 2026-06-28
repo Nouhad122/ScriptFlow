@@ -2,7 +2,7 @@
  * PipelineOrchestrator coordinates the six AI agents in the correct sequence.
  *
  * IMPORTANT DESIGN RULE:
- * The Orchestrator NEVER calls the Claude API directly.
+ * The Orchestrator NEVER calls the AI provider directly.
  * It NEVER generates AI content.
  * Its only job is sequencing, error checking, and passing data between agents.
  *

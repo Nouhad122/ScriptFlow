@@ -1,32 +1,36 @@
 /**
- * Custom error classes for the Claude infrastructure layer.
+ * Custom error classes for the AI infrastructure layer.
  *
  * Using named classes instead of generic Error objects allows callers to use
  * instanceof checks for precise error handling without string matching.
  *
+ * These error classes are provider-agnostic — they describe the failure
+ * category (missing key, provider error, parse failure) without referencing
+ * any specific AI vendor. Swapping the provider does not change these types.
+ *
  * Example:
  *   catch (error) {
  *     if (error instanceof MissingApiKeyError) { ... }
- *     if (error instanceof ClaudeApiError) { ... }
+ *     if (error instanceof AIProviderError) { ... }
  *   }
  */
 
 export class MissingApiKeyError extends Error {
   constructor() {
     super(
-      'ANTHROPIC_API_KEY is missing or not set. ' +
-        'Add it to your .env file: ANTHROPIC_API_KEY=sk-ant-...'
+      'GEMINI_API_KEY is missing or not set. ' +
+        'Add it to your .env file: GEMINI_API_KEY=your-key-here'
     );
     this.name = 'MissingApiKeyError';
   }
 }
 
-export class ClaudeApiError extends Error {
+export class AIProviderError extends Error {
   readonly statusCode?: number;
 
   constructor(message: string, statusCode?: number) {
-    super(`Claude API error: ${message}`);
-    this.name = 'ClaudeApiError';
+    super(`AI provider error: ${message}`);
+    this.name = 'AIProviderError';
     this.statusCode = statusCode;
   }
 }
@@ -34,7 +38,7 @@ export class ClaudeApiError extends Error {
 export class JsonParseError extends Error {
   constructor(rawPreview: string) {
     super(
-      `Failed to parse Claude response as JSON after retry. ` +
+      `Failed to parse AI response as JSON after retry. ` +
         `Response preview: "${rawPreview.slice(0, 150)}"`
     );
     this.name = 'JsonParseError';

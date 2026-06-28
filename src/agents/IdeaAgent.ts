@@ -17,22 +17,27 @@
  *   creative strategy (ideation) with analytical evaluation (ICE scoring),
  *   making it impossible to change one without risking the other.
  *   The assessment brief explicitly flags this as a deliberate two-stage design.
+ *
+ * WHY THIS AGENT DOESN'T KNOW WHICH AI PROVIDER IS BEING USED:
+ *   The agent depends on AIService, not on any specific SDK. If the provider
+ *   changes from Gemini to OpenAI or Anthropic, this file stays identical.
+ *   Only AIService and its configuration change.
  */
 
 import { randomUUID } from 'crypto';
 import type { IIdeaAgent } from './interfaces';
 import type { AgentResult, ClientContext, Idea } from '../types';
 import { type ApprovalStatus, type CreativeType, type LeadType } from '../types';
-import type { ClaudeService } from '../services/ClaudeService';
+import type { AIService } from '../services/AIService';
 import { type IdeaAgentConfig, ideaAgentConfig } from '../config/idea.config';
 import { buildIdeaPrompt } from '../prompts/idea.prompt';
 
 // ---------------------------------------------------------------------------
-// Raw shape returned by Claude — uses "concept" per the assessment brief.
+// Raw shape returned by the AI provider — uses "concept" per the assessment brief.
 // Mapped to the internal Idea type (which uses "hookLine") in mapToIdeas().
 // ---------------------------------------------------------------------------
 
-interface RawIdeaFromClaude {
+interface RawIdeaFromAI {
   concept: string;
   creativeType: string;
   angle: string;
@@ -44,7 +49,7 @@ interface RawIdeaFromClaude {
 
 const VALID_CREATIVE_TYPES = new Set(['talking-head', 'ugc', 'listicle', 'story', 'demo', 'testimonial']);
 const VALID_LEAD_TYPES = new Set(['problem-led', 'proof-led', 'curiosity-led', 'offer-led']);
-const REQUIRED_FIELDS: Array<keyof RawIdeaFromClaude> = [
+const REQUIRED_FIELDS: Array<keyof RawIdeaFromAI> = [
   'concept', 'creativeType', 'angle', 'leadType', 'supportingProof', 'targetAvatar', 'targetPain',
 ];
 
@@ -52,14 +57,14 @@ const REQUIRED_FIELDS: Array<keyof RawIdeaFromClaude> = [
 // Validation
 // ---------------------------------------------------------------------------
 
-function validateRawIdeas(raw: unknown): RawIdeaFromClaude[] {
+function validateRawIdeas(raw: unknown): RawIdeaFromAI[] {
   if (!Array.isArray(raw)) {
     throw new Error(
-      `Expected a JSON array from Claude but received: ${typeof raw}`
+      `Expected a JSON array from the AI provider but received: ${typeof raw}`
     );
   }
   if (raw.length === 0) {
-    throw new Error('Claude returned an empty ideas array');
+    throw new Error('AI provider returned an empty ideas array');
   }
 
   for (let i = 0; i < raw.length; i++) {
@@ -92,7 +97,7 @@ function validateRawIdeas(raw: unknown): RawIdeaFromClaude[] {
   // Duplicate concept check (case-insensitive)
   const seen = new Set<string>();
   for (let i = 0; i < raw.length; i++) {
-    const idea = raw[i] as RawIdeaFromClaude;
+    const idea = raw[i] as RawIdeaFromAI;
     const normalised = idea.concept.toLowerCase().trim();
     if (seen.has(normalised)) {
       throw new Error(
@@ -102,14 +107,14 @@ function validateRawIdeas(raw: unknown): RawIdeaFromClaude[] {
     seen.add(normalised);
   }
 
-  return raw as RawIdeaFromClaude[];
+  return raw as RawIdeaFromAI[];
 }
 
 // ---------------------------------------------------------------------------
 // Mapping
 // ---------------------------------------------------------------------------
 
-function mapToIdeas(raw: RawIdeaFromClaude[], clientId: string): Idea[] {
+function mapToIdeas(raw: RawIdeaFromAI[], clientId: string): Idea[] {
   return raw.map((r) => ({
     id: randomUUID(),
     clientId,
@@ -132,11 +137,11 @@ function mapToIdeas(raw: RawIdeaFromClaude[], clientId: string): Idea[] {
 // ---------------------------------------------------------------------------
 
 export class IdeaAgent implements IIdeaAgent {
-  private readonly claude: ClaudeService;
+  private readonly ai: AIService;
   private readonly config: IdeaAgentConfig;
 
-  constructor(claude: ClaudeService, config: IdeaAgentConfig = ideaAgentConfig) {
-    this.claude = claude;
+  constructor(ai: AIService, config: IdeaAgentConfig = ideaAgentConfig) {
+    this.ai = ai;
     this.config = config;
   }
 
@@ -154,7 +159,7 @@ export class IdeaAgent implements IIdeaAgent {
         this.config.creativityLevel
       );
 
-      const raw = await this.claude.generateStructured<RawIdeaFromClaude[]>(prompt);
+      const raw = await this.ai.generateStructured<RawIdeaFromAI[]>(prompt);
       const validated = validateRawIdeas(raw);
       const ideas = mapToIdeas(validated, context.id);
 

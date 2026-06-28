@@ -8,12 +8,12 @@
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:backend": "tsc -p tsconfig.json",
-    "test:claude": "tsx src/scripts/test-claude.ts",
+    "test:ai": "tsx src/scripts/test-ai.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
+    "@google/generative-ai": "^0.21.0",
     "@libsql/client": "^0.14.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

@@ -7,7 +7,7 @@
  *   3. Prompts for different agents never bleed into each other.
  *
  * The function receives runtime data (client context, count, history) and
- * returns a fully assembled prompt string ready for the ClaudeService.
+ * returns a fully assembled prompt string ready for AIService.
  */
 
 import type { ClientContext, Idea } from '../types';

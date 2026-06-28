@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { checkClaudeHealth } from '../controllers/health.controller';
+import { checkAIHealth } from '../controllers/health.controller';
 
 const router = Router();
 
 // GET /api/health/claude
-router.get('/claude', checkClaudeHealth);
+router.get('/claude', checkAIHealth);
 
 export default router;

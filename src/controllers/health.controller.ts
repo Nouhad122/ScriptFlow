@@ -1,24 +1,27 @@
 import type { Request, Response } from 'express';
-import { claudeConfig } from '../config/claude.config';
-import { claudeService } from '../services/ClaudeService';
-import { ClaudeApiError, MissingApiKeyError } from '../utils/errors';
+import { aiConfig } from '../config/ai.config';
+import { aiService } from '../services/AIService';
+import { AIProviderError, MissingApiKeyError } from '../utils/errors';
 
 /**
  * GET /api/health/claude
  *
- * Sends a minimal test prompt to Claude and reports latency.
+ * Sends a minimal test prompt to the AI provider and reports latency.
  * Returns a detailed error response on failure — never swallows errors silently.
+ *
+ * The endpoint path (/api/health/claude) is preserved for backwards compatibility.
+ * The underlying provider is Gemini; the path is a stable contract, not a brand name.
  */
-export async function checkClaudeHealth(_req: Request, res: Response): Promise<void> {
+export async function checkAIHealth(_req: Request, res: Response): Promise<void> {
   const start = Date.now();
 
   try {
-    await claudeService.generateText('Reply with the single word: HEALTHY');
+    await aiService.generateText('Reply with the single word: HEALTHY');
     const latencyMs = Date.now() - start;
 
     res.json({
       success: true,
-      model: claudeConfig.model,
+      model: aiConfig.model,
       latency: `${latencyMs}ms`,
     });
   } catch (error) {
@@ -34,7 +37,7 @@ export async function checkClaudeHealth(_req: Request, res: Response): Promise<v
       return;
     }
 
-    if (error instanceof ClaudeApiError) {
+    if (error instanceof AIProviderError) {
       res.status(502).json({
         success: false,
         error: error.name,

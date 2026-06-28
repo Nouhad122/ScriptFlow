@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
-import { ClaudeService } from '../services/ClaudeService';
+import { AIService } from '../services/AIService';
 import { IdeaAgent } from '../agents/IdeaAgent';
-import { claudeConfig } from '../config/claude.config';
+import { aiConfig } from '../config/ai.config';
 import { ideaAgentConfig } from '../config/idea.config';
 import { env } from '../config/env';
 import type { ClientContext } from '../types';
@@ -31,9 +31,9 @@ interface IdeaApiResponse {
  * Runs the IdeaAgent and returns the generated ideas.
  * Does NOT persist anything — generation only.
  *
- * Note: The ClaudeService is instantiated here with the temperature from
- * ideaAgentConfig. When the full composition root is built (src/index.ts),
- * this construction will move there and agents will be injected.
+ * Note: AIService is instantiated here with the temperature from ideaAgentConfig.
+ * When the full composition root is built (src/index.ts), this construction will
+ * move there and agents will be injected.
  */
 export async function generateIdeas(req: Request, res: Response): Promise<void> {
   const { clientContext } = req.body as { clientContext?: ClientContext };
@@ -54,13 +54,13 @@ export async function generateIdeas(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const claude = new ClaudeService(env.anthropicApiKey, {
-    model: claudeConfig.model,
-    maxTokens: claudeConfig.maxTokens,
+  const ai = new AIService(env.geminiApiKey, {
+    model: aiConfig.model,
+    maxTokens: aiConfig.maxTokens,
     temperature: ideaAgentConfig.temperature,
   });
 
-  const agent = new IdeaAgent(claude);
+  const agent = new IdeaAgent(ai);
 
   // No previous ideas at this stage — the Memory Agent will supply them later
   const result = await agent.generateIdeas(clientContext, []);

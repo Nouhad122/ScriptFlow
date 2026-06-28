@@ -1,26 +1,26 @@
 /**
- * Standalone Claude connection test.
+ * Standalone AI connection test.
  *
- * Run with:   npm run test:claude
+ * Run with:   npm run test:ai
  *
- * Tests both ClaudeService methods independently of the HTTP server.
- * Use this to verify your API key is working before running the full pipeline.
+ * Tests both AIService methods independently of the HTTP server.
+ * Use this to verify your Gemini API key is working before running the full pipeline.
  */
 
 import 'dotenv/config';
-import { ClaudeService } from '../services/ClaudeService';
+import { AIService } from '../services/AIService';
 import { env } from '../config/env';
-import { claudeConfig } from '../config/claude.config';
+import { aiConfig } from '../config/ai.config';
 
 const PASS = '✓';
 const FAIL = '✗';
 
 async function runTests(): Promise<void> {
-  console.log('\n=== ScriptFlow — Claude Connection Test ===\n');
-  console.log(`Model : ${claudeConfig.model}`);
-  console.log(`Key   : ${env.anthropicApiKey ? `${env.anthropicApiKey.slice(0, 10)}...` : 'NOT SET'}\n`);
+  console.log('\n=== ScriptFlow — Gemini Connection Test ===\n');
+  console.log(`Model : ${aiConfig.model}`);
+  console.log(`Key   : ${env.geminiApiKey ? `${env.geminiApiKey.slice(0, 10)}...` : 'NOT SET'}\n`);
 
-  const service = new ClaudeService(env.anthropicApiKey);
+  const service = new AIService(env.geminiApiKey);
   let passed = 0;
   let failed = 0;
 
