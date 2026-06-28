@@ -10,7 +10,7 @@ import { AIProviderError, MissingApiKeyError } from '../utils/errors';
  * Returns a detailed error response on failure — never swallows errors silently.
  *
  * The endpoint path (/api/health/claude) is preserved for backwards compatibility.
- * The underlying provider is Gemini; the path is a stable contract, not a brand name.
+ * The underlying provider is OpenRouter; the path is a stable contract, not a brand name.
  */
 export async function checkAIHealth(_req: Request, res: Response): Promise<void> {
   const start = Date.now();

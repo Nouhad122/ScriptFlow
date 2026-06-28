@@ -30,8 +30,7 @@
  */
 
 import type { IIceScoringAgent } from './interfaces';
-import type { AgentResult, ClientContext, Idea } from '../types';
-import type { IceScore, IceRecommendation } from '../types/idea.types';
+import type { AgentResult, ClientContext, Idea, IceScore, IceRecommendation } from '../types';
 import type { AIService } from '../services/AIService';
 import { type IceAgentConfig, iceAgentConfig } from '../config/ice.config';
 import { buildIceScoringPrompt } from '../prompts/ice.prompt';
