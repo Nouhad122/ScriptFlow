@@ -8,6 +8,7 @@
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:backend": "tsc -p tsconfig.json",
+    "test:claude": "tsx src/scripts/test-claude.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },
