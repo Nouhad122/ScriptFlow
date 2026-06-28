@@ -8,36 +8,26 @@ import { iceAgentConfig } from '../config/ice.config';
 import { env } from '../config/env';
 import type { ClientContext, Idea } from '../types';
 
-/**
- * Maps the internal Idea type (which uses hookLine) to the API response shape
- * (which uses concept, per the assessment brief specification).
- *
- * This is the only place where hookLine ↔ concept translation happens.
- * All internal code uses hookLine; the public API surface uses concept.
- */
-interface IdeaApiResponse {
-  id: string;
-  concept: string;
-  creativeType: string;
-  angle: string;
-  leadType: string;
-  supportingProof: string;
-  targetAvatar: string;
-  targetPain: string;
-}
-
 // ---------------------------------------------------------------------------
 // POST /api/ideas/generate
 // ---------------------------------------------------------------------------
 
 /**
- * Accepts a clientContext in the request body.
- * Runs the IdeaAgent and returns the generated ideas.
- * Does NOT persist anything — generation only.
+ * Returns the full Idea[] produced by IdeaAgent.
  *
- * Note: AIService is instantiated here with the temperature from ideaAgentConfig.
- * When the full composition root is built (src/index.ts), this construction will
- * move there and agents will be injected.
+ * WHY THE PREVIOUS IdeaApiResponse TRANSFORM WAS REMOVED:
+ *   The pipeline flows generate → score. The generate endpoint previously mapped
+ *   the internal Idea type to a leaner shape:
+ *     hookLine           → concept
+ *     supportingProofPoints: string[] → supportingProof: string  (first element only)
+ *   When callers passed that output to POST /api/ideas/score, the ice prompt builder
+ *   called idea.supportingProofPoints.join(…) on a field that no longer existed
+ *   on the object, crashing with "Cannot read properties of undefined (reading 'join')".
+ *   TypeScript did not catch this because the controller used an "as" cast.
+ *
+ *   Both endpoints share the Idea type as their data contract. No transformation
+ *   happens at the API boundary because there is no separate consumer of the
+ *   generate endpoint that requires a different shape.
  */
 export async function generateIdeas(req: Request, res: Response): Promise<void> {
   const { clientContext } = req.body as { clientContext?: ClientContext };
@@ -79,22 +69,11 @@ export async function generateIdeas(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const response: IdeaApiResponse[] = result.data.map((idea) => ({
-    id: idea.id,
-    concept: idea.hookLine,
-    creativeType: idea.creativeType,
-    angle: idea.angle,
-    leadType: idea.leadType,
-    supportingProof: idea.supportingProofPoints[0] ?? '',
-    targetAvatar: idea.targetAvatar,
-    targetPain: idea.targetPain,
-  }));
-
   res.json({
     success: true,
-    count: response.length,
+    count: result.data.length,
     durationMs: result.durationMs,
-    ideas: response,
+    ideas: result.data,
   });
 }
 
@@ -113,8 +92,8 @@ export async function generateIdeas(req: Request, res: Response): Promise<void> 
  *   offer mechanics, brand voice), these dimensions cannot be evaluated meaningfully.
  *
  * HOW THIS ENDPOINT IS USED IN THE PIPELINE:
- *   1. POST /api/ideas/generate → returns ideas (iceScore: null on each)
- *   2. POST /api/ideas/score   → returns the same ideas with iceScore populated
+ *   1. POST /api/ideas/generate → returns Idea[] (iceScore: null on each)
+ *   2. POST /api/ideas/score   → accepts the same Idea[], returns them with iceScore populated
  *   3. Dashboard displays scored ideas for human approval
  *   Once the Memory Agent is implemented, steps 1–2 will run automatically
  *   via the Pipeline Orchestrator.
