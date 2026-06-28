@@ -69,13 +69,16 @@ export class AIService {
     }
     if (!this.model) {
       const genAI = new GoogleGenerativeAI(trimmed);
-      this.model = genAI.getGenerativeModel({
-        model: this.config.model,
-        generationConfig: {
-          temperature: this.config.temperature,
-          maxOutputTokens: this.config.maxTokens,
+      this.model = genAI.getGenerativeModel(
+        {
+          model: this.config.model,
+          generationConfig: {
+            temperature: this.config.temperature,
+            maxOutputTokens: this.config.maxTokens,
+          },
         },
-      });
+        { apiVersion: 'v1' }
+      );
     }
     return this.model;
   }
