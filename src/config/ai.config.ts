@@ -27,7 +27,7 @@ export interface AIConfig {
 }
 
 export const aiConfig: AIConfig = {
-  model: 'gemini-1.5-pro',
+  model: 'gemini-2.0-flash',
   maxTokens: 4096,
   temperature: 1,
 };
