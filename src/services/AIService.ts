@@ -2,27 +2,33 @@
  * AIService — the single communication channel between this application and the AI provider.
  *
  * WHY THIS ABSTRACTION EXISTS:
- *   Agents depend on AIService, not on any specific SDK (Gemini, OpenAI, Anthropic, etc.).
+ *   Agents depend on AIService, not on any specific SDK or vendor.
  *   This means the choice of AI provider is an infrastructure detail hidden behind this
  *   class. Swapping providers requires changing only this file — no agent, orchestrator,
  *   or route is aware of which vendor is being called.
  *
  *   This is the Dependency Inversion Principle: high-level modules (agents) depend on
- *   an abstraction (AIService), not on low-level details (Gemini SDK).
+ *   an abstraction (AIService), not on low-level details (a specific SDK).
+ *
+ * CURRENT PROVIDER: OpenRouter
+ *   OpenRouter exposes an OpenAI-compatible API, so the standard OpenAI SDK is used
+ *   with a custom baseURL pointing to OpenRouter's endpoint.
+ *   Model routing (which underlying LLM handles the request) is controlled by the
+ *   model name in ai.config.ts — no code changes required to switch models.
  *
  * HOW TO SWAP PROVIDERS:
- *   1. Install the new provider's SDK.
+ *   1. Install the new provider's SDK (or keep the OpenAI SDK if compatible).
  *   2. Rewrite the private methods in this file to use the new SDK.
  *   3. Update ai.config.ts with the new model name.
  *   4. Update env.ts and .env.example with the new API key variable.
  *   Zero changes to agents, orchestrators, controllers, or prompts.
  *
  * RESPONSIBILITIES:
- *   - Initialize and manage the Gemini SDK client
+ *   - Initialize and manage the OpenAI SDK client pointed at OpenRouter
  *   - Validate the API key before any request is made
  *   - Send prompts and return responses
  *   - Handle and translate SDK errors into typed application errors
- *   - Log every AI request (method, model, duration, outcome)
+ *   - Log every AI request (provider, method, model, duration, outcome, HTTP status)
  *   - Parse and validate JSON responses for structured generation
  *
  * NOT RESPONSIBLE FOR:
@@ -31,12 +37,14 @@
  *   - Data persistence (memory agent owns storage)
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { GenerativeModel } from '@google/generative-ai';
+import OpenAI, { APIError } from 'openai';
 import { type AIConfig, aiConfig } from '../config/ai.config';
 import { env } from '../config/env';
 import { AIProviderError, JsonParseError, MissingApiKeyError } from '../utils/errors';
 import { logAiRequest } from '../utils/logger';
+
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const PROVIDER_NAME = 'openrouter';
 
 export class AIService {
   private readonly apiKey: string;
@@ -44,7 +52,7 @@ export class AIService {
 
   // Lazily initialised — allows the server to start without a valid key
   // so the health endpoint can report a meaningful error instead of crashing on boot.
-  private model: GenerativeModel | null = null;
+  private client: OpenAI | null = null;
 
   constructor(apiKey: string, config: AIConfig = aiConfig) {
     this.apiKey = apiKey;
@@ -56,31 +64,29 @@ export class AIService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Returns the Gemini GenerativeModel, validating the key and initialising
-   * on first call. Throws MissingApiKeyError if the key is absent.
+   * Returns the OpenAI client configured for OpenRouter, validating the key
+   * and initialising on first call. Throws MissingApiKeyError if the key is absent.
    *
-   * The model is created once and cached. Temperature and maxOutputTokens are
-   * baked into the model at construction time via generationConfig.
+   * Optional HTTP-Referer and X-Title headers are added when siteUrl/appName
+   * are present in config — OpenRouter uses these to attribute traffic.
    */
-  private ensureModel(): GenerativeModel {
+  private ensureClient(): OpenAI {
     const trimmed = this.apiKey?.trim();
-    if (!trimmed || trimmed === 'your_gemini_api_key_here') {
+    if (!trimmed || trimmed === 'your_openrouter_api_key_here') {
       throw new MissingApiKeyError();
     }
-    if (!this.model) {
-      const genAI = new GoogleGenerativeAI(trimmed);
-      this.model = genAI.getGenerativeModel(
-        {
-          model: this.config.model,
-          generationConfig: {
-            temperature: this.config.temperature,
-            maxOutputTokens: this.config.maxTokens,
-          },
-        },
-        { apiVersion: 'v1' }
-      );
+    if (!this.client) {
+      const defaultHeaders: Record<string, string> = {};
+      if (this.config.siteUrl) defaultHeaders['HTTP-Referer'] = this.config.siteUrl;
+      if (this.config.appName) defaultHeaders['X-Title'] = this.config.appName;
+
+      this.client = new OpenAI({
+        baseURL: OPENROUTER_BASE_URL,
+        apiKey: trimmed,
+        defaultHeaders,
+      });
     }
-    return this.model;
+    return this.client;
   }
 
   /**
@@ -88,32 +94,34 @@ export class AIService {
    * log entry. Keeping this private prevents double-logging on retry paths.
    */
   private async callAI(prompt: string): Promise<string> {
-    const model = this.ensureModel();
+    const client = this.ensureClient();
 
     try {
-      const result = await model.generateContent(prompt);
-      const response = result.response;
+      const response = await client.chat.completions.create({
+        model: this.config.model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: this.config.maxTokens,
+        temperature: this.config.temperature,
+      });
 
-      // Surface safety filter blocks as a typed error rather than letting
-      // them produce an empty or undefined text() call downstream.
-      const feedback = response.promptFeedback;
-      if (feedback && feedback.blockReason) {
-        throw new AIProviderError(
-          `Request blocked by Gemini safety filters: ${String(feedback.blockReason)}`
-        );
+      const text = response.choices[0]?.message?.content;
+      if (!text) {
+        throw new AIProviderError('OpenRouter returned an empty response');
       }
-
-      return response.text();
+      return text;
     } catch (error) {
       // Re-throw our own typed errors as-is
       if (error instanceof MissingApiKeyError || error instanceof AIProviderError) {
         throw error;
       }
-      // Translate Gemini SDK errors into our typed error.
-      // Gemini fetch errors carry a `status` HTTP code on the error object.
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      const statusCode = (error as { status?: number }).status;
-      throw new AIProviderError(message, statusCode);
+      // Translate OpenAI SDK errors (which OpenRouter also surfaces) into our typed error.
+      // APIError carries the HTTP status code from the upstream response.
+      if (error instanceof APIError) {
+        throw new AIProviderError(error.message, error.status);
+      }
+      throw new AIProviderError(
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   }
 
@@ -157,6 +165,7 @@ export class AIService {
     const start = Date.now();
     let success = false;
     let errorName: string | undefined;
+    let statusCode: number | undefined;
 
     try {
       const result = await this.callAI(prompt);
@@ -164,14 +173,17 @@ export class AIService {
       return result;
     } catch (error) {
       errorName = error instanceof Error ? error.name : 'UnknownError';
+      statusCode = error instanceof AIProviderError ? error.statusCode : undefined;
       throw error;
     } finally {
       logAiRequest({
+        provider: PROVIDER_NAME,
         method: 'generateText',
         model: this.config.model,
         durationMs: Date.now() - start,
         success,
         error: errorName,
+        statusCode,
       });
     }
   }
@@ -193,6 +205,7 @@ export class AIService {
     const start = Date.now();
     let success = false;
     let errorName: string | undefined;
+    let statusCode: number | undefined;
 
     try {
       const raw = await this.callAI(this.buildJsonPrompt(prompt));
@@ -220,14 +233,17 @@ export class AIService {
       }
     } catch (error) {
       errorName = error instanceof Error ? error.name : 'UnknownError';
+      statusCode = error instanceof AIProviderError ? error.statusCode : undefined;
       throw error;
     } finally {
       logAiRequest({
+        provider: PROVIDER_NAME,
         method: 'generateStructured',
         model: this.config.model,
         durationMs: Date.now() - start,
         success,
         error: errorName,
+        statusCode,
       });
     }
   }
@@ -243,8 +259,8 @@ export class AIService {
  * Agents receive this via constructor injection rather than importing it
  * directly — this keeps agents testable with mock service instances.
  *
- * The Gemini client is lazily initialised, so importing this module does not
- * throw even when GEMINI_API_KEY is missing. Errors surface on first method
- * call, which is where the health endpoint will catch them.
+ * The client is lazily initialised, so importing this module does not
+ * throw even when OPENROUTER_API_KEY is missing. Errors surface on first
+ * method call, which is where the health endpoint will catch them.
  */
-export const aiService = new AIService(env.geminiApiKey);
+export const aiService = new AIService(env.openrouterApiKey);

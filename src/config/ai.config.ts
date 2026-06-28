@@ -15,19 +15,28 @@
  *
  * SWAPPING PROVIDERS:
  *   When a new AI provider is added, only AIService needs to change.
- *   This config file drives the same three parameters (model name, token limit,
+ *   This config file drives the same parameters (model name, token limit,
  *   temperature) regardless of which provider is in use. The shape of AIConfig
  *   is stable across providers — agents and orchestrators never need to update.
+ *
+ * OPTIONAL HEADERS (siteUrl, appName):
+ *   OpenRouter recommends including these to identify your application.
+ *   They are sent as HTTP-Referer and X-Title headers respectively.
+ *   Both are optional — the request succeeds without them.
  */
 
 export interface AIConfig {
   model: string;
   maxTokens: number;
   temperature: number;
+  siteUrl?: string;
+  appName?: string;
 }
 
 export const aiConfig: AIConfig = {
-  model: 'gemini-2.0-flash',
+  model: 'deepseek/deepseek-chat-v3',
   maxTokens: 4096,
   temperature: 1,
+  siteUrl: 'https://scriptflow.app',
+  appName: 'ScriptFlow',
 };

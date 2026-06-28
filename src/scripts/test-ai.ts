@@ -4,7 +4,7 @@
  * Run with:   npm run test:ai
  *
  * Tests both AIService methods independently of the HTTP server.
- * Use this to verify your Gemini API key is working before running the full pipeline.
+ * Use this to verify your OpenRouter API key is working before running the full pipeline.
  */
 
 import 'dotenv/config';
@@ -16,11 +16,12 @@ const PASS = '✓';
 const FAIL = '✗';
 
 async function runTests(): Promise<void> {
-  console.log('\n=== ScriptFlow — Gemini Connection Test ===\n');
-  console.log(`Model : ${aiConfig.model}`);
-  console.log(`Key   : ${env.geminiApiKey ? `${env.geminiApiKey.slice(0, 10)}...` : 'NOT SET'}\n`);
+  console.log('\n=== ScriptFlow — OpenRouter Connection Test ===\n');
+  console.log(`Provider : OpenRouter`);
+  console.log(`Model    : ${aiConfig.model}`);
+  console.log(`Key      : ${env.openrouterApiKey ? `${env.openrouterApiKey.slice(0, 10)}...` : 'NOT SET'}\n`);
 
-  const service = new AIService(env.geminiApiKey);
+  const service = new AIService(env.openrouterApiKey);
   let passed = 0;
   let failed = 0;
 

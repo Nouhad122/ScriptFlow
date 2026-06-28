@@ -54,7 +54,7 @@ export async function generateIdeas(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const ai = new AIService(env.geminiApiKey, {
+  const ai = new AIService(env.openrouterApiKey, {
     model: aiConfig.model,
     maxTokens: aiConfig.maxTokens,
     temperature: ideaAgentConfig.temperature,
