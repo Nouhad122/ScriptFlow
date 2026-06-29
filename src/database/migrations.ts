@@ -66,6 +66,31 @@ const MIGRATIONS: Migration[] = [
       'ALTER TABLE ideas ADD COLUMN approved_by TEXT',
     ],
   },
+  {
+    id: '003_create_scripts',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS scripts (
+        id               TEXT PRIMARY KEY,
+        idea_id          TEXT NOT NULL UNIQUE,
+        client_id        TEXT NOT NULL,
+        pipeline_run_id  TEXT NOT NULL,
+        hook1            TEXT NOT NULL,
+        hook2            TEXT NOT NULL,
+        hook3            TEXT NOT NULL,
+        body_problem     TEXT NOT NULL,
+        body_story       TEXT NOT NULL,
+        body_solution    TEXT NOT NULL,
+        body_proof       TEXT NOT NULL,
+        body_cta         TEXT NOT NULL,
+        production_notes TEXT,
+        status           TEXT NOT NULL DEFAULT 'pending_review'
+                           CHECK (status IN ('pending_review', 'passed', 'held')),
+        delivered_at     TEXT,
+        output_path      TEXT,
+        created_at       TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(): Promise<void> {

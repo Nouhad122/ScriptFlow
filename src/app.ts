@@ -3,6 +3,7 @@ import cors from 'cors';
 import healthRoutes from './routes/health.routes';
 import ideasRoutes from './routes/ideas.routes';
 import pipelineRoutes from './routes/pipeline.routes';
+import scriptsRoutes from './routes/scripts.routes';
 
 const app = express();
 
@@ -18,5 +19,6 @@ app.get('/health', (_req, res) => {
 app.use('/api/health', healthRoutes);
 app.use('/api/ideas', ideasRoutes);
 app.use('/api/pipeline', pipelineRoutes);
+app.use('/api/scripts', scriptsRoutes);
 
 export default app;

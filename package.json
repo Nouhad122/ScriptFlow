@@ -11,6 +11,7 @@
     "test:ai": "tsx src/scripts/test-ai.ts",
     "test:db": "tsx src/scripts/test-persistence.ts",
     "test:pipeline": "tsx src/scripts/test-pipeline.ts",
+    "test:scripts": "tsx src/scripts/test-scripts.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },
