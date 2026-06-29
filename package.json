@@ -10,6 +10,7 @@
     "build:backend": "tsc -p tsconfig.json",
     "test:ai": "tsx src/scripts/test-ai.ts",
     "test:db": "tsx src/scripts/test-persistence.ts",
+    "test:pipeline": "tsx src/scripts/test-pipeline.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },

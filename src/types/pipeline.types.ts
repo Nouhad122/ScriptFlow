@@ -1,3 +1,5 @@
+import type { Idea } from './idea.types';
+
 /**
  * AgentResult<T> is the standard return type for every agent method.
  *
@@ -35,6 +37,54 @@ export type PipelineRunStatus =
   | 'processing_script'
   | 'completed'
   | 'failed';
+
+/**
+ * PipelineSummary is the per-run breakdown of ICE recommendations.
+ * "Candidates" refers to the AI's recommendation, not the human's approval decision.
+ * At the time the pipeline completes, all ideas are still pending human review.
+ */
+export interface PipelineSummary {
+  totalIdeas: number;
+  approvedCandidates: number;
+  considerCandidates: number;
+  rejectedCandidates: number;
+}
+
+/**
+ * PipelineTimings breaks down wall-clock time per stage.
+ * Used for debugging (which stage is slow?) and cost attribution (longer AI
+ * calls = higher spend). The orchestrator records each stage independently.
+ */
+export interface PipelineTimings {
+  ideaGenerationMs: number;
+  iceScoringMs: number;
+  persistenceMs: number;
+  totalMs: number;
+}
+
+/**
+ * PipelineRunResult is the discriminated union returned by
+ * PipelineOrchestrator.generateAndScoreIdeas().
+ *
+ * On failure, failedStage identifies exactly which stage broke so callers can
+ * report meaningfully (e.g. "ICE Scoring failed") rather than a generic error.
+ */
+export type PipelineRunResult =
+  | {
+      success: true;
+      pipelineRunId: string;
+      generatedAt: Date;
+      clientId: string;
+      summary: PipelineSummary;
+      timings: PipelineTimings;
+      ideas: Idea[];
+    }
+  | {
+      success: false;
+      pipelineRunId: string;
+      failedStage: string;
+      error: string;
+    };
 
 /**
  * PipelineRun is a record of one full execution of the pipeline.
