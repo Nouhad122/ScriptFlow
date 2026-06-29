@@ -4,6 +4,7 @@ import healthRoutes from './routes/health.routes';
 import ideasRoutes from './routes/ideas.routes';
 import pipelineRoutes from './routes/pipeline.routes';
 import scriptsRoutes from './routes/scripts.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 
@@ -20,5 +21,6 @@ app.use('/api/health', healthRoutes);
 app.use('/api/ideas', ideasRoutes);
 app.use('/api/pipeline', pipelineRoutes);
 app.use('/api/scripts', scriptsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 export default app;
