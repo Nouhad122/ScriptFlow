@@ -172,9 +172,19 @@ export async function saveIdeas(req: Request, res: Response): Promise<void> {
     }
   }
 
+  // JSON carries no Date objects — createdAt and approvedAt arrive as strings
+  // (or are absent). Normalise before passing to the repository so ideaToArgs
+  // can safely call .toISOString() and approvedBy is never undefined.
+  const normalised: Idea[] = ideas.map((idea) => ({
+    ...idea,
+    createdAt: new Date(idea.createdAt),
+    approvedAt: idea.approvedAt ? new Date(idea.approvedAt) : null,
+    approvedBy: idea.approvedBy ?? null,
+  }));
+
   try {
-    await dbSaveIdeas(ideas);
-    res.json({ success: true, saved: ideas.length });
+    await dbSaveIdeas(normalised);
+    res.json({ success: true, saved: normalised.length });
   } catch (error) {
     res.status(500).json({
       success: false,
