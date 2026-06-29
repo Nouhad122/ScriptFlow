@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import { Sidebar } from './Sidebar'
 import { TopNav } from './TopNav'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -15,6 +16,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
       </div>
+      <Toaster theme="dark" richColors position="bottom-right" />
     </div>
   )
 }

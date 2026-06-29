@@ -26,9 +26,9 @@ apiClient.interceptors.response.use(
         error.message ??
         'An unexpected error occurred'
       const status = error.response?.status ?? 0
-      return Promise.reject({ message, status })
+      return Promise.reject({ message, status, data: error.response?.data })
     }
-    return Promise.reject({ message: 'Network error', status: 0 })
+    return Promise.reject({ message: 'Network error', status: 0, data: undefined })
   },
 )
 

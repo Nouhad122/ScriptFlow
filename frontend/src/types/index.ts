@@ -1,3 +1,70 @@
+// ── Client context (mirrored from backend src/types/client.types.ts) ─────────
+
+export interface Avatar {
+  name: string
+  pains: string[]
+  desires: string[]
+}
+
+export interface BrandVoice {
+  tone: string
+  speakingStyle: string
+  doNotUse: string[]
+  referenceExamples: string[]
+}
+
+export interface ProofPoint {
+  type: 'result' | 'testimonial' | 'statistic' | 'case_study'
+  content: string
+  source: string
+}
+
+export interface OfferMechanics {
+  productName: string
+  price: string
+  guarantee: string
+  keyBenefits: string[]
+  cta: string
+}
+
+export interface ClientContext {
+  id: string
+  name: string
+  niche: string
+  avatars: Avatar[]
+  brandVoice: BrandVoice
+  proofBank: ProofPoint[]
+  offerMechanics: OfferMechanics
+  portfolioSummary: string
+  referencePackPath: string
+}
+
+// ── Pipeline types (mirrored from backend src/types/pipeline.types.ts) ────────
+
+export interface PipelineSummary {
+  totalIdeas: number
+  approvedCandidates: number
+  considerCandidates: number
+  rejectedCandidates: number
+}
+
+export interface PipelineTimings {
+  ideaGenerationMs: number
+  iceScoringMs: number
+  persistenceMs: number
+  totalMs: number
+}
+
+export interface PipelineRunSuccess {
+  success: true
+  pipelineRunId: string
+  generatedAt: string
+  clientId: string
+  summary: PipelineSummary
+  timings: PipelineTimings
+  ideas: Idea[]
+}
+
 // ── Backend entity types (mirrored from backend src/types/) ─────────────────
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
