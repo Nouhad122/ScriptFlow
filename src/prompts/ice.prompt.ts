@@ -20,14 +20,14 @@
 import type { ClientContext, Idea } from '../types';
 
 export function buildIceScoringPrompt(ideas: Idea[], context: ClientContext): string {
-  const avatarsBlock = context.avatars
+  const avatarsBlock = (context.avatars ?? [])
     .map(
       (a) =>
-        `  Avatar: ${a.name}\n  Pains: ${a.pains.join(' | ')}\n  Desires: ${a.desires.join(' | ')}`
+        `  Avatar: ${a.name}\n  Pains: ${(a.pains ?? []).join(' | ')}\n  Desires: ${(a.desires ?? []).join(' | ')}`
     )
     .join('\n\n');
 
-  const proofBankBlock = context.proofBank
+  const proofBankBlock = (context.proofBank ?? [])
     .map((p) => `  [${p.type.toUpperCase()}] ${p.content}  (Source: ${p.source})`)
     .join('\n');
 
@@ -41,7 +41,7 @@ export function buildIceScoringPrompt(ideas: Idea[], context: ClientContext): st
         `  Lead Type:      ${idea.leadType}\n` +
         `  Target Avatar:  ${idea.targetAvatar}\n` +
         `  Target Pain:    ${idea.targetPain}\n` +
-        `  Supporting Proof: ${idea.supportingProofPoints.join('; ')}`
+        `  Supporting Proof: ${(idea.supportingProofPoints ?? []).join('; ')}`
     )
     .join('\n\n');
 
@@ -64,7 +64,7 @@ ${avatarsBlock}
   Product:        ${context.offerMechanics.productName}
   Price:          ${context.offerMechanics.price}
   Guarantee:      ${context.offerMechanics.guarantee}
-  Key Benefits:   ${context.offerMechanics.keyBenefits.join(', ')}
+  Key Benefits:   ${(context.offerMechanics.keyBenefits ?? []).join(', ')}
   CTA:            ${context.offerMechanics.cta}
 
 ── PROOF BANK ────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ ${proofBankBlock}
 
   Tone:           ${context.brandVoice.tone}
   Speaking Style: ${context.brandVoice.speakingStyle}
-  Never Use:      ${context.brandVoice.doNotUse.join(', ')}
+  Never Use:      ${(context.brandVoice.doNotUse ?? []).join(', ')}
 
 ━━━ IDEAS TO EVALUATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

@@ -34,16 +34,16 @@ export function buildScriptPrompt(
   context: ClientContext,
   memoryContext: Script[]
 ): string {
-  const avatarsBlock = context.avatars
+  const avatarsBlock = (context.avatars ?? [])
     .map(
       (a) =>
         `  Name:    ${a.name}\n` +
-        `  Pains:   ${a.pains.join(' | ')}\n` +
-        `  Desires: ${a.desires.join(' | ')}`
+        `  Pains:   ${(a.pains ?? []).join(' | ')}\n` +
+        `  Desires: ${(a.desires ?? []).join(' | ')}`
     )
     .join('\n\n');
 
-  const proofBankBlock = context.proofBank
+  const proofBankBlock = (context.proofBank ?? [])
     .map((p) => `  [${p.type.toUpperCase()}] "${p.content}"  (Source: ${p.source})`)
     .join('\n');
 
@@ -66,7 +66,7 @@ export function buildScriptPrompt(
     `  Lead Type:        ${idea.leadType}\n` +
     `  Target Avatar:    ${idea.targetAvatar}\n` +
     `  Target Pain:      "${idea.targetPain}"\n` +
-    `  Supporting Proof: ${idea.supportingProofPoints.join(' | ')}` +
+    `  Supporting Proof: ${(idea.supportingProofPoints ?? []).join(' | ')}` +
     (idea.iceScore
       ? `\n  ICE Reasoning:    "${idea.iceScore.overallReasoning}"`
       : '');
@@ -97,7 +97,7 @@ ${avatarsBlock}
 
   Tone:           ${context.brandVoice.tone}
   Speaking Style: ${context.brandVoice.speakingStyle}
-  Never Use:      ${context.brandVoice.doNotUse.join(', ')}${context.brandVoice.referenceExamples.length > 0 ? `\n  Reference Examples:\n${context.brandVoice.referenceExamples.map((e) => `    "${e}"`).join('\n')}` : ''}
+  Never Use:      ${(context.brandVoice.doNotUse ?? []).join(', ')}${(context.brandVoice.referenceExamples ?? []).length > 0 ? `\n  Reference Examples:\n${(context.brandVoice.referenceExamples ?? []).map((e) => `    "${e}"`).join('\n')}` : ''}
 
 ── PROOF BANK — use only what is listed here ─────────────────────
 
@@ -108,7 +108,7 @@ ${proofBankBlock}
   Product:      ${context.offerMechanics.productName}
   Price:        ${context.offerMechanics.price}
   Guarantee:    ${context.offerMechanics.guarantee}
-  Key Benefits: ${context.offerMechanics.keyBenefits.join(', ')}
+  Key Benefits: ${(context.offerMechanics.keyBenefits ?? []).join(', ')}
   CTA:          ${context.offerMechanics.cta}
 ${memoryBlock ? `\n── PREVIOUSLY APPROVED SCRIPTS (avoid repeating these patterns) ──\n\n${memoryBlock}\n` : ''}
 ━━━ APPROVED IDEA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
