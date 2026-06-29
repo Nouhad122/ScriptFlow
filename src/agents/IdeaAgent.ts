@@ -128,6 +128,8 @@ function mapToIdeas(raw: RawIdeaFromAI[], clientId: string): Idea[] {
     targetPain: r.targetPain,
     iceScore: null,
     approvalStatus: 'pending' as ApprovalStatus,
+    approvedAt: null,
+    approvedBy: null,
     createdAt: new Date(),
   }));
 }

@@ -59,6 +59,8 @@ export interface Idea {
 
   // Set by the human approver via the dashboard
   approvalStatus: ApprovalStatus;
+  approvedAt: Date | null;
+  approvedBy: string | null;
 
   createdAt: Date;
 }

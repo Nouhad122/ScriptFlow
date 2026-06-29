@@ -54,6 +54,8 @@ function rowToIdea(row: Row): Idea {
     targetPain: row['target_pain'] as string,
     iceScore,
     approvalStatus: row['approval_status'] as ApprovalStatus,
+    approvedAt: row['approved_at'] ? new Date(row['approved_at'] as string) : null,
+    approvedBy: (row['approved_by'] as string | null) ?? null,
     createdAt: new Date(row['created_at'] as string),
   };
 }
@@ -68,8 +70,8 @@ const INSERT_SQL = `
     supporting_proof_points, target_avatar, target_pain,
     ice_impact, ice_impact_reason, ice_confidence, ice_confidence_reason,
     ice_ease, ice_ease_reason, ice_overall_reasoning, ice_recommendation,
-    approval_status, created_at, updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    approval_status, approved_at, approved_by, created_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 function ideaToArgs(idea: Idea): (string | number | null)[] {
@@ -95,6 +97,8 @@ function ideaToArgs(idea: Idea): (string | number | null)[] {
     s ? s.overallReasoning : null,
     s ? s.recommendation : null,
     idea.approvalStatus,
+    idea.approvedAt ? idea.approvedAt.toISOString() : null,
+    idea.approvedBy,
     now,
     now,
   ];
@@ -107,7 +111,7 @@ function ideaToArgs(idea: Idea): (string | number | null)[] {
 /**
  * Saves a batch of ideas to the database in a single transaction.
  * Uses INSERT OR IGNORE — existing ideas (matched by id) are skipped,
- * so re-saving a batch never overwrites approval status.
+ * so re-saving a batch never overwrites approval status or approval metadata.
  */
 export async function saveIdeas(ideas: Idea[]): Promise<void> {
   if (ideas.length === 0) return;
@@ -131,7 +135,9 @@ export async function getPendingIdeas(): Promise<Idea[]> {
 }
 
 /**
- * Updates the approval status of a single idea and returns the updated record.
+ * Sets the approval status of an idea and records who reviewed it and when.
+ * Both approve and reject set approvedAt and approvedBy — these fields capture
+ * when the decision was made, regardless of which direction.
  * Returns null if no idea with that id exists.
  */
 export async function updateIdeaApprovalStatus(
@@ -142,8 +148,8 @@ export async function updateIdeaApprovalStatus(
   const now = new Date().toISOString();
 
   const result = await db.execute({
-    sql: 'UPDATE ideas SET approval_status = ?, updated_at = ? WHERE id = ?',
-    args: [status, now, id],
+    sql: 'UPDATE ideas SET approval_status = ?, approved_at = ?, approved_by = ?, updated_at = ? WHERE id = ?',
+    args: [status, now, 'manual', now, id],
   });
 
   if (result.rowsAffected === 0) return null;

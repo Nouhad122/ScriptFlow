@@ -7,14 +7,18 @@
  * Runs migrations first so it works on a fresh clone with no existing database.
  *
  * WHAT THIS TESTS:
- *   1. Migrations run without error
- *   2. saveIdeas() persists a batch
- *   3. getPendingIdeas() returns only pending ideas
- *   4. updateIdeaApprovalStatus() approves an idea and returns the updated record
- *   5. updateIdeaApprovalStatus() rejects an idea and returns the updated record
- *   6. getIdeaById() retrieves a specific idea
- *   7. updateIdeaApprovalStatus() returns null for an unknown id
- *   8. saveIdeas() with duplicate ids does not overwrite approval status (INSERT OR IGNORE)
+ *   1.  Migrations run without error
+ *   2.  saveIdeas() persists a batch
+ *   3.  getPendingIdeas() returns only pending ideas
+ *   4.  updateIdeaApprovalStatus() approves an idea — sets approvedAt and approvedBy
+ *   5.  updateIdeaApprovalStatus() rejects an idea — sets approvedAt and approvedBy
+ *   6.  getPendingIdeas() excludes approved and rejected ideas
+ *   7.  getIdeaById() retrieves a specific idea with all fields intact
+ *   8.  getIdeaById() returns null for unknown id
+ *   9.  updateIdeaApprovalStatus() returns null for unknown id
+ *   10. saveIdeas() with duplicate ids does not overwrite approval status (INSERT OR IGNORE)
+ *   11. getIdeaById() returns iceScore: null for unscored idea
+ *   12. Fresh ideas start with approvedAt: null and approvedBy: null
  */
 
 import 'dotenv/config';
@@ -58,6 +62,8 @@ function makeIdea(overrides: Partial<Idea> = {}): Idea {
       recommendation: 'APPROVE',
     },
     approvalStatus: 'pending',
+    approvedAt: null,
+    approvedBy: null,
     createdAt: new Date(),
     ...overrides,
   };
@@ -119,19 +125,28 @@ async function runTests(): Promise<void> {
     if (!ids.has(ideaC.id)) throw new Error('ideaC not in pending queue');
   });
 
-  // 3. Approve ideaA
-  await test('updateIdeaApprovalStatus() approves an idea', async () => {
+  // 3. Approve ideaA — verify status, approvedAt, approvedBy
+  await test('updateIdeaApprovalStatus() approves an idea and sets approval metadata', async () => {
+    const before = Date.now();
     const updated = await updateIdeaApprovalStatus(ideaA.id, 'approved');
+    const after = Date.now();
     if (!updated) throw new Error('returned null for existing id');
     if (updated.approvalStatus !== 'approved') throw new Error(`expected 'approved', got '${updated.approvalStatus}'`);
     if (updated.id !== ideaA.id) throw new Error('returned wrong idea');
+    if (!updated.approvedAt) throw new Error('approvedAt is null after approval');
+    if (!(updated.approvedAt instanceof Date)) throw new Error('approvedAt is not a Date');
+    const approvedMs = updated.approvedAt.getTime();
+    if (approvedMs < before || approvedMs > after) throw new Error('approvedAt is outside expected time range');
+    if (updated.approvedBy !== 'manual') throw new Error(`expected approvedBy = 'manual', got '${updated.approvedBy}'`);
   });
 
-  // 4. Reject ideaB
-  await test('updateIdeaApprovalStatus() rejects an idea', async () => {
+  // 4. Reject ideaB — verify status, approvedAt, approvedBy
+  await test('updateIdeaApprovalStatus() rejects an idea and sets approval metadata', async () => {
     const updated = await updateIdeaApprovalStatus(ideaB.id, 'rejected');
     if (!updated) throw new Error('returned null for existing id');
     if (updated.approvalStatus !== 'rejected') throw new Error(`expected 'rejected', got '${updated.approvalStatus}'`);
+    if (!updated.approvedAt) throw new Error('approvedAt is null after rejection');
+    if (updated.approvedBy !== 'manual') throw new Error(`expected approvedBy = 'manual', got '${updated.approvedBy}'`);
   });
 
   // 5. Pending queue now contains only ideaC
@@ -183,6 +198,14 @@ async function runTests(): Promise<void> {
     const idea = await getIdeaById(ideaC.id);
     if (!idea) throw new Error('returned null for existing id');
     if (idea.iceScore !== null) throw new Error('expected null iceScore, got a value');
+  });
+
+  // 11. Fresh ideas have null approval metadata before any review
+  await test('fresh ideas have approvedAt: null and approvedBy: null', async () => {
+    const idea = await getIdeaById(ideaC.id);
+    if (!idea) throw new Error('returned null for existing id');
+    if (idea.approvedAt !== null) throw new Error(`expected approvedAt = null, got '${idea.approvedAt}'`);
+    if (idea.approvedBy !== null) throw new Error(`expected approvedBy = null, got '${idea.approvedBy}'`);
   });
 
   // Summary
