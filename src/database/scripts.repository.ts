@@ -116,3 +116,37 @@ export async function getScriptByIdeaId(ideaId: string): Promise<Script | null> 
   if (result.rows.length === 0) return null;
   return rowToScript(result.rows[0]);
 }
+
+/**
+ * Returns a single script by its own id, or null if not found.
+ * Used by the quality review controller to fetch the script being reviewed.
+ */
+export async function getScriptById(id: string): Promise<Script | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: 'SELECT * FROM scripts WHERE id = ?',
+    args: [id],
+  });
+
+  if (result.rows.length === 0) return null;
+  return rowToScript(result.rows[0]);
+}
+
+/**
+ * Updates the status of a script after quality review.
+ * Valid transitions: pending_review → passed | held.
+ * Returns null if no script with that id exists.
+ */
+export async function updateScriptStatus(
+  id: string,
+  status: ScriptStatus
+): Promise<Script | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: 'UPDATE scripts SET status = ? WHERE id = ?',
+    args: [status, id],
+  });
+
+  if (result.rowsAffected === 0) return null;
+  return getScriptById(id);
+}

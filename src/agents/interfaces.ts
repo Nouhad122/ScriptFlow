@@ -66,9 +66,20 @@ export interface IScriptAgent {
  * Evaluates a generated script against all 10 quality checklist items individually.
  * Returns a structured QualityReview — never a single pass/fail boolean.
  * A script that fails any single item is held and not delivered.
+ *
+ * WHY idea IS INCLUDED:
+ *   The original Idea carries the approved hookLine, targetPain, angle, and
+ *   supportingProofPoints. Without it, the agent cannot check whether the script
+ *   stayed true to the approved concept or whether the proof references match
+ *   what the human approved. The Idea is the ground truth against which the
+ *   script is measured.
  */
 export interface IQualityReviewAgent {
-  reviewScript(script: Script, context: ClientContext): Promise<AgentResult<QualityReview>>;
+  reviewScript(
+    script: Script,
+    idea: Idea,
+    context: ClientContext
+  ): Promise<AgentResult<QualityReview>>;
 }
 
 /**

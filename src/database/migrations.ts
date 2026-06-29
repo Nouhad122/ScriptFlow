@@ -68,6 +68,7 @@ const MIGRATIONS: Migration[] = [
   },
   {
     id: '003_create_scripts',
+
     statements: [
       `CREATE TABLE IF NOT EXISTS scripts (
         id               TEXT PRIMARY KEY,
@@ -87,6 +88,21 @@ const MIGRATIONS: Migration[] = [
                            CHECK (status IN ('pending_review', 'passed', 'held')),
         delivered_at     TEXT,
         output_path      TEXT,
+        created_at       TEXT NOT NULL
+      )`,
+    ],
+  },
+  {
+    id: '004_create_quality_reviews',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS quality_reviews (
+        id               TEXT PRIMARY KEY,
+        script_id        TEXT NOT NULL UNIQUE,
+        idea_id          TEXT NOT NULL,
+        pipeline_run_id  TEXT NOT NULL,
+        overall_decision TEXT NOT NULL CHECK (overall_decision IN ('PASS', 'HOLD')),
+        overall_score    INTEGER NOT NULL,
+        checks           TEXT NOT NULL,
         created_at       TEXT NOT NULL
       )`,
     ],

@@ -12,6 +12,7 @@
     "test:db": "tsx src/scripts/test-persistence.ts",
     "test:pipeline": "tsx src/scripts/test-pipeline.ts",
     "test:scripts": "tsx src/scripts/test-scripts.ts",
+    "test:quality": "tsx src/scripts/test-quality.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },
