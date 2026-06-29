@@ -9,6 +9,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:backend": "tsc -p tsconfig.json",
     "test:ai": "tsx src/scripts/test-ai.ts",
+    "test:db": "tsx src/scripts/test-persistence.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },

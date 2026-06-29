@@ -7,6 +7,12 @@ import { ideaAgentConfig } from '../config/idea.config';
 import { iceAgentConfig } from '../config/ice.config';
 import { env } from '../config/env';
 import type { ClientContext, Idea } from '../types';
+import {
+  saveIdeas as dbSaveIdeas,
+  getPendingIdeas as dbGetPendingIdeas,
+  updateIdeaApprovalStatus,
+  getIdeaById,
+} from '../database/ideas.repository';
 
 // ---------------------------------------------------------------------------
 // POST /api/ideas/generate
@@ -16,18 +22,10 @@ import type { ClientContext, Idea } from '../types';
  * Returns the full Idea[] produced by IdeaAgent.
  *
  * WHY THE PREVIOUS IdeaApiResponse TRANSFORM WAS REMOVED:
- *   The pipeline flows generate → score. The generate endpoint previously mapped
- *   the internal Idea type to a leaner shape:
- *     hookLine           → concept
- *     supportingProofPoints: string[] → supportingProof: string  (first element only)
- *   When callers passed that output to POST /api/ideas/score, the ice prompt builder
- *   called idea.supportingProofPoints.join(…) on a field that no longer existed
- *   on the object, crashing with "Cannot read properties of undefined (reading 'join')".
- *   TypeScript did not catch this because the controller used an "as" cast.
- *
- *   Both endpoints share the Idea type as their data contract. No transformation
- *   happens at the API boundary because there is no separate consumer of the
- *   generate endpoint that requires a different shape.
+ *   The pipeline flows generate → score → save. Both generate and score use
+ *   the Idea type as their data contract. Renaming hookLine → concept and
+ *   collapsing supportingProofPoints: string[] → supportingProof: string caused
+ *   a crash in the ICE scoring prompt builder (`.join()` on undefined).
  */
 export async function generateIdeas(req: Request, res: Response): Promise<void> {
   const { clientContext } = req.body as { clientContext?: ClientContext };
@@ -82,21 +80,8 @@ export async function generateIdeas(req: Request, res: Response): Promise<void> 
 // ---------------------------------------------------------------------------
 
 /**
- * Accepts an array of Ideas and a ClientContext.
- * Runs the IceScoringAgent and returns the same ideas with iceScore populated.
- * Does NOT persist anything — scoring only.
- *
- * WHY clientContext IS REQUIRED:
- *   The scoring prompt evaluates "target audience fit", "business value", and
- *   "alignment with client context". Without the full context (avatars, proof bank,
- *   offer mechanics, brand voice), these dimensions cannot be evaluated meaningfully.
- *
- * HOW THIS ENDPOINT IS USED IN THE PIPELINE:
- *   1. POST /api/ideas/generate → returns Idea[] (iceScore: null on each)
- *   2. POST /api/ideas/score   → accepts the same Idea[], returns them with iceScore populated
- *   3. Dashboard displays scored ideas for human approval
- *   Once the Memory Agent is implemented, steps 1–2 will run automatically
- *   via the Pipeline Orchestrator.
+ * Accepts Idea[] and a ClientContext, returns the same ideas with iceScore populated.
+ * Does NOT persist — scoring only. Call POST /api/ideas/save after this.
  */
 export async function scoreIdeas(req: Request, res: Response): Promise<void> {
   const { ideas, clientContext } = req.body as {
@@ -145,4 +130,124 @@ export async function scoreIdeas(req: Request, res: Response): Promise<void> {
     durationMs: result.durationMs,
     ideas: result.data,
   });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/ideas/save
+// ---------------------------------------------------------------------------
+
+/**
+ * Persists a batch of scored ideas to SQLite.
+ *
+ * Expected input: the output of POST /api/ideas/score — Idea[] where each
+ * idea has iceScore populated.
+ *
+ * Uses INSERT OR IGNORE so re-saving a batch never overwrites approval
+ * status that was already set by a human.
+ *
+ * WHY THIS IS A SEPARATE ENDPOINT FROM /score:
+ *   Scoring and saving are distinct steps. The human may want to inspect
+ *   scores before committing them to the database. Keeping them separate
+ *   also means the pipeline can be tested end-to-end without writing to disk.
+ */
+export async function saveIdeas(req: Request, res: Response): Promise<void> {
+  const { ideas } = req.body as { ideas?: Idea[] };
+
+  if (!ideas || !Array.isArray(ideas) || ideas.length === 0) {
+    res.status(400).json({
+      success: false,
+      error: 'ideas must be a non-empty array',
+    });
+    return;
+  }
+
+  for (let i = 0; i < ideas.length; i++) {
+    const idea = ideas[i];
+    if (!idea.id || !idea.hookLine || !idea.clientId) {
+      res.status(400).json({
+        success: false,
+        error: `Idea at index ${i} is missing required fields: id, hookLine, clientId`,
+      });
+      return;
+    }
+  }
+
+  try {
+    await dbSaveIdeas(ideas);
+    res.json({ success: true, saved: ideas.length });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while saving ideas',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/ideas/pending
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns all ideas in the human approval queue (approvalStatus = 'pending').
+ *
+ * This is the endpoint the React dashboard will poll to populate the approval UI.
+ * Results are ordered oldest-first so reviewers see them in generation order.
+ */
+export async function getPendingIdeas(_req: Request, res: Response): Promise<void> {
+  try {
+    const ideas = await dbGetPendingIdeas();
+    res.json({ success: true, count: ideas.length, ideas });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while fetching pending ideas',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/ideas/:id/approval
+// ---------------------------------------------------------------------------
+
+/**
+ * Sets the approval status of an idea to 'approved' or 'rejected'.
+ *
+ * WHY THIS ONLY UPDATES THE DATABASE NOW:
+ *   Script generation has not been implemented yet. When the Script Agent is
+ *   added, approving an idea will automatically trigger script generation via
+ *   the Pipeline Orchestrator. For now the approval is recorded and the updated
+ *   idea is returned so the dashboard can reflect the change immediately.
+ *
+ * Returns 404 if no idea with the given id exists in the database.
+ */
+export async function approveIdea(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { status } = req.body as { status?: string };
+
+  if (status !== 'approved' && status !== 'rejected') {
+    res.status(400).json({
+      success: false,
+      error: 'status must be "approved" or "rejected"',
+    });
+    return;
+  }
+
+  try {
+    const updated = await updateIdeaApprovalStatus(id, status);
+
+    if (!updated) {
+      res.status(404).json({
+        success: false,
+        error: `Idea with id "${id}" not found`,
+      });
+      return;
+    }
+
+    res.json({ success: true, idea: updated });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while updating approval status',
+    });
+  }
 }
