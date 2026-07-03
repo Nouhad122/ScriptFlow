@@ -12,6 +12,7 @@
 
 import type { ClientContext, Idea } from '../types';
 import type { CreativityLevel } from '../config/idea.config';
+import type { MemoryMatch } from '../memory/types';
 
 const CREATIVITY_INSTRUCTION: Record<CreativityLevel, string> = {
   focused: 'Focus on the highest-converting proven angles for this niche. Prioritise clarity and directness over novelty.',
@@ -19,11 +20,37 @@ const CREATIVITY_INSTRUCTION: Record<CreativityLevel, string> = {
   experimental: 'Push creative boundaries. Use unexpected angles, counterintuitive hooks, and formats the target audience has not seen before.',
 };
 
+function buildMemorySection(matches: MemoryMatch[]): string {
+  if (matches.length === 0) return '';
+
+  const matchBlocks = matches
+    .map(
+      (m, i) =>
+        `MATCH ${i + 1} [${m.sourceType.toUpperCase()}] (similarity: ${(m.similarity * 100).toFixed(0)}%)\n` +
+        m.text
+          .split('\n')
+          .map((line) => `  ${line}`)
+          .join('\n')
+    )
+    .join('\n\n');
+
+  return (
+    `━━━ PREVIOUSLY APPROVED CONTENT FROM MEMORY (${matches.length} match${matches.length === 1 ? '' : 'es'}) ━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    matchBlocks +
+    '\n\nDIVERSITY INSTRUCTIONS:\n' +
+    '  • Do NOT copy or closely paraphrase any hook, angle, or narrative above.\n' +
+    '  • You MAY revisit a successful theme only if you approach it from a different avatar, creative format, or lead type.\n' +
+    '  • NEVER repeat a hook verbatim.\n' +
+    '  • Use this section as a map of what has already worked — generate what is genuinely new.\n\n'
+  );
+}
+
 export function buildIdeaPrompt(
   context: ClientContext,
   count: number,
   previousIdeas: Idea[],
-  creativityLevel: CreativityLevel
+  creativityLevel: CreativityLevel,
+  memoryMatches?: MemoryMatch[]
 ): string {
   const avatarsBlock = context.avatars
     .map(
@@ -40,6 +67,8 @@ export function buildIdeaPrompt(
     previousIdeas.length > 0
       ? previousIdeas.map((i) => `  - "${i.hookLine}"`).join('\n')
       : '  None.';
+
+  const memorySection = buildMemorySection(memoryMatches ?? []);
 
   return `You are a world-class direct-response video ad strategist specialising in high-ticket online business coaching.
 
@@ -77,7 +106,7 @@ ${proofBankBlock}
 
 ${previousBlock}
 
-━━━ YOUR INSTRUCTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${memorySection}━━━ YOUR INSTRUCTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Generate exactly ${count} distinct script concepts. ${CREATIVITY_INSTRUCTION[creativityLevel]}
 

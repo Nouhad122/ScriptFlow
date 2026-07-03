@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { useRunPipeline } from '@/hooks/use-run-pipeline'
 import { PipelineError } from '@/services/pipeline.service'
 import { MOCK_CLIENTS } from '@/data/mock-clients'
+import { MemoryExplorer } from '@/components/MemoryExplorer'
 
 // ── Stage definitions ─────────────────────────────────────────────────────────
 
@@ -450,6 +451,11 @@ export function AutomationPage() {
                 error={mutation.error}
                 onRetry={handleRun}
               />
+            )}
+
+            {/* Memory Explorer — visible once a client is selected */}
+            {selectedClient && (
+              <MemoryExplorer key={selectedClient.id} client={selectedClient} />
             )}
           </div>
         </div>

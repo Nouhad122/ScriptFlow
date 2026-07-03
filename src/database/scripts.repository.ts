@@ -133,6 +133,24 @@ export async function getScriptById(id: string): Promise<Script | null> {
 }
 
 /**
+ * Returns all scripts joined with the parent idea's hook_line.
+ * Used by the Quality Center to display the script queue without N+1 queries.
+ */
+export async function getAllScripts(): Promise<(Script & { ideaHookLine: string })[]> {
+  const db = getDb();
+  const result = await db.execute(`
+    SELECT s.*, i.hook_line AS idea_hook_line
+    FROM scripts s
+    JOIN ideas i ON s.idea_id = i.id
+    ORDER BY s.created_at DESC
+  `);
+  return result.rows.map(row => ({
+    ...rowToScript(row),
+    ideaHookLine: row['idea_hook_line'] as string,
+  }));
+}
+
+/**
  * Updates the status of a script after quality review.
  * Valid transitions: pending_review → passed | held.
  * Returns null if no script with that id exists.

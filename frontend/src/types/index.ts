@@ -70,6 +70,7 @@ export interface PipelineRunSuccess {
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type ScriptStatus = 'pending_review' | 'passed' | 'held'
 export type QualityDecision = 'PASS' | 'HOLD'
+export type PipelineStatus = 'completed' | 'failed'
 
 export interface IceScore {
   impact: number
@@ -93,7 +94,7 @@ export interface Idea {
   supportingProofPoints: string[]
   targetAvatar: string
   targetPain: string
-  iceScore: IceScore
+  iceScore: IceScore | null
   approvalStatus: ApprovalStatus
   approvedAt: string | null
   approvedBy: string | null
@@ -124,6 +125,45 @@ export interface Script {
   createdAt: string
 }
 
+// ── Quality review types (mirrored from backend src/types/quality.types.ts) ──
+
+export interface QualityScoreCheck {
+  pass: boolean
+  score: number
+  reason: string
+}
+
+export interface QualityBooleanCheck {
+  pass: boolean
+  reason: string
+}
+
+export interface QualityChecks {
+  hookStrength: QualityScoreCheck
+  problemClarity: QualityScoreCheck
+  storyFlow: QualityScoreCheck
+  solutionAlignment: QualityScoreCheck
+  proofAccuracy: QualityScoreCheck
+  ctaAlignment: QualityScoreCheck
+  brandVoice: QualityScoreCheck
+  fabrication: QualityBooleanCheck
+  length: QualityBooleanCheck
+  structure: QualityBooleanCheck
+}
+
+export interface QualityReview {
+  id: string
+  scriptId: string
+  ideaId: string
+  pipelineRunId: string
+  overallDecision: QualityDecision
+  overallScore: number
+  checks: QualityChecks
+  createdAt: string
+}
+
+export type ScriptWithHook = Script & { ideaHookLine: string }
+
 export interface DashboardSummary {
   pipelines: number
   ideasGenerated: number
@@ -148,6 +188,36 @@ export interface ApiError {
   status: number
 }
 
+// ── Pipeline history types (mirrored from backend src/database/pipeline.repository.ts) ──
+
+export interface PipelineRunRecord {
+  id: string
+  clientId: string
+  status: PipelineStatus
+  totalIdeas: number
+  approvedCandidates: number
+  considerCandidates: number
+  rejectedCandidates: number
+  ideaGenerationMs: number | null
+  iceScoringMs: number | null
+  persistenceMs: number | null
+  totalMs: number | null
+  failedStage: string | null
+  errorMessage: string | null
+  startedAt: string
+  completedAt: string | null
+}
+
+export interface PipelineAnalytics {
+  totalRuns: number
+  completedRuns: number
+  failedRuns: number
+  successRate: number
+  averageTotalMs: number | null
+  longestTotalMs: number | null
+  fastestTotalMs: number | null
+}
+
 // ── UI utility types ─────────────────────────────────────────────────────────
 
-export type Status = ApprovalStatus | ScriptStatus | QualityDecision
+export type Status = ApprovalStatus | ScriptStatus | QualityDecision | PipelineStatus

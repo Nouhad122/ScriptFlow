@@ -158,6 +158,17 @@ export async function updateIdeaApprovalStatus(
 }
 
 /**
+ * Returns all approved ideas, ordered most-recently-approved first.
+ */
+export async function getApprovedIdeas(): Promise<Idea[]> {
+  const db = getDb();
+  const result = await db.execute(
+    "SELECT * FROM ideas WHERE approval_status = 'approved' ORDER BY approved_at DESC"
+  );
+  return result.rows.map(rowToIdea);
+}
+
+/**
  * Returns a single idea by id, or null if not found.
  */
 export async function getIdeaById(id: string): Promise<Idea | null> {

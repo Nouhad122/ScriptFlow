@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { runPipeline, PipelineError } from '@/services/pipeline.service'
 import { dashboardSummaryKey } from '@/hooks/use-dashboard-summary'
+import { pipelineHistoryKey } from '@/hooks/use-pipeline-history'
 import type { ClientContext } from '@/types'
 
 export function useRunPipeline() {
@@ -14,7 +15,8 @@ export function useRunPipeline() {
       toast.success('Pipeline complete', {
         description: `${data.summary.totalIdeas} ideas generated in ${(data.timings.totalMs / 1000).toFixed(1)}s`,
       })
-      queryClient.invalidateQueries({ queryKey: dashboardSummaryKey })
+      void queryClient.invalidateQueries({ queryKey: dashboardSummaryKey })
+      void queryClient.invalidateQueries({ queryKey: pipelineHistoryKey })
     },
 
     onError: (error) => {

@@ -4,6 +4,7 @@ import {
   scoreIdeas,
   saveIdeas,
   getPendingIdeas,
+  getApprovedIdeas,
   approveIdea,
 } from '../controllers/ideas.controller';
 
@@ -20,6 +21,9 @@ router.post('/save', saveIdeas);
 
 // GET  /api/ideas/pending   — DB: human approval queue
 router.get('/pending', getPendingIdeas);
+
+// GET  /api/ideas/approved  — DB: approved ideas for script generation
+router.get('/approved', getApprovedIdeas);
 
 // PATCH /api/ideas/:id/approval  — DB: approve or reject an idea
 router.patch('/:id/approval', approveIdea);

@@ -22,7 +22,50 @@ import { aiConfig } from '../config/ai.config';
 import { ideaAgentConfig } from '../config/idea.config';
 import { iceAgentConfig } from '../config/ice.config';
 import { env } from '../config/env';
+import { getAllPipelineRuns, getPipelineRunById as dbGetPipelineRunById } from '../database/pipeline.repository';
+import { getMemorySearchService } from '../memory';
 import type { ClientContext } from '../types';
+
+// ---------------------------------------------------------------------------
+// GET /api/pipeline/history
+// ---------------------------------------------------------------------------
+
+export async function getPipelineHistory(_req: Request, res: Response): Promise<void> {
+  try {
+    const { runs, analytics } = await getAllPipelineRuns();
+    res.json({ success: true, count: runs.length, runs, analytics });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while fetching pipeline history',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/pipeline/history/:runId
+// ---------------------------------------------------------------------------
+
+export async function getPipelineRun(req: Request, res: Response): Promise<void> {
+  const { runId } = req.params;
+  try {
+    const run = await dbGetPipelineRunById(runId);
+    if (!run) {
+      res.status(404).json({ success: false, error: `No pipeline run found with id "${runId}"` });
+      return;
+    }
+    res.json({ success: true, run });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while fetching pipeline run',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/pipeline/run
+// ---------------------------------------------------------------------------
 
 export async function runPipeline(req: Request, res: Response): Promise<void> {
   const { clientContext } = req.body as { clientContext?: ClientContext };
@@ -51,7 +94,8 @@ export async function runPipeline(req: Request, res: Response): Promise<void> {
 
   const orchestrator = new PipelineOrchestrator(
     new IdeaAgent(ideaAI),
-    new IceScoringAgent(iceAI)
+    new IceScoringAgent(iceAI),
+    getMemorySearchService() ?? undefined,
   );
 
   try {

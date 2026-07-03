@@ -8,6 +8,7 @@
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:backend": "tsc -p tsconfig.json",
+    "test:memory": "vitest run src/memory/__tests__",
     "test:ai": "tsx src/scripts/test-ai.ts",
     "test:db": "tsx src/scripts/test-persistence.ts",
     "test:pipeline": "tsx src/scripts/test-pipeline.ts",
@@ -21,8 +22,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "openai": "^6.45.0",
-    "voyageai": "^0.0.5"
+    "openai": "^6.45.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -34,6 +34,7 @@
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "tsx": "^4.11.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^2.0.0"
   }
 }

@@ -1,8 +1,22 @@
 import { Router } from 'express';
-import { generateScript } from '../controllers/scripts.controller';
+import {
+  getAllScripts,
+  generateScript,
+  getScriptForIdea,
+  getReviewForScript,
+} from '../controllers/scripts.controller';
 import { reviewScript } from '../controllers/quality.controller';
 
 const router = Router();
+
+// GET  /api/scripts/by-idea/:ideaId   — fetch existing script for an idea (specific literal first)
+router.get('/by-idea/:ideaId', getScriptForIdea);
+
+// GET  /api/scripts                   — list all scripts joined with idea hookLine
+router.get('/', getAllScripts);
+
+// GET  /api/scripts/:scriptId/review  — fetch existing review without triggering a new one
+router.get('/:scriptId/review', getReviewForScript);
 
 // POST /api/scripts/generate          — generate a script for one approved idea
 router.post('/generate', generateScript);

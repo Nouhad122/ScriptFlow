@@ -107,6 +107,75 @@ const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    id: '005_create_pipeline_runs',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS pipeline_runs (
+        id                  TEXT PRIMARY KEY,
+        client_id           TEXT NOT NULL,
+        status              TEXT NOT NULL DEFAULT 'completed'
+                              CHECK (status IN ('completed', 'failed')),
+        total_ideas         INTEGER NOT NULL DEFAULT 0,
+        approved_candidates INTEGER NOT NULL DEFAULT 0,
+        consider_candidates INTEGER NOT NULL DEFAULT 0,
+        rejected_candidates INTEGER NOT NULL DEFAULT 0,
+        idea_generation_ms  INTEGER,
+        ice_scoring_ms      INTEGER,
+        persistence_ms      INTEGER,
+        total_ms            INTEGER,
+        failed_stage        TEXT,
+        error_message       TEXT,
+        started_at          TEXT NOT NULL,
+        completed_at        TEXT
+      )`,
+      // Bootstrap from existing ideas — reconstructs historical runs without timing data
+      `INSERT OR IGNORE INTO pipeline_runs
+        (id, client_id, status, total_ideas,
+         approved_candidates, consider_candidates, rejected_candidates,
+         started_at, completed_at)
+       SELECT
+         pipeline_run_id,
+         client_id,
+         'completed',
+         COUNT(*),
+         COALESCE(SUM(CASE WHEN ice_recommendation = 'APPROVE'  THEN 1 ELSE 0 END), 0),
+         COALESCE(SUM(CASE WHEN ice_recommendation = 'CONSIDER' THEN 1 ELSE 0 END), 0),
+         COALESCE(SUM(CASE WHEN ice_recommendation = 'REJECT'   THEN 1 ELSE 0 END), 0),
+         MIN(created_at),
+         MIN(created_at)
+       FROM ideas
+       WHERE pipeline_run_id != ''
+       GROUP BY pipeline_run_id, client_id`,
+    ],
+  },
+  {
+    id: '006_create_memory_entries',
+    statements: [
+      // Embeddings stored as JSON text arrays — intentionally unoptimised for V2.
+      // See src/memory/SimilaritySearch.ts for the sqlite-vec upgrade path.
+      `CREATE TABLE IF NOT EXISTS memory_entries (
+        id               TEXT    PRIMARY KEY,
+        source_type      TEXT    NOT NULL CHECK (source_type IN ('idea', 'script')),
+        source_id        TEXT    NOT NULL,
+        client_id        TEXT    NOT NULL,
+        pipeline_run_id  TEXT    NOT NULL,
+        text             TEXT    NOT NULL,
+        embedding_model  TEXT    NOT NULL,
+        embedding        TEXT    NOT NULL,
+        created_at       TEXT    NOT NULL
+      )`,
+    ],
+  },
+  {
+    id: '007_memory_entries_unique_source',
+    statements: [
+      // Prevents duplicate embeddings for the same idea or script.
+      // INSERT OR IGNORE in MemoryRepository.saveEntry() relies on this index
+      // to discard repeated writes idempotently.
+      `CREATE UNIQUE INDEX IF NOT EXISTS uq_memory_entries_source
+       ON memory_entries (source_type, source_id)`,
+    ],
+  },
 ];
 
 export async function runMigrations(): Promise<void> {

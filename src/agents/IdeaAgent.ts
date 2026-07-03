@@ -31,6 +31,7 @@ import { type ApprovalStatus, type CreativeType, type LeadType } from '../types'
 import type { AIService } from '../services/AIService';
 import { type IdeaAgentConfig, ideaAgentConfig } from '../config/idea.config';
 import { buildIdeaPrompt } from '../prompts/idea.prompt';
+import type { MemoryMatch } from '../memory/types';
 
 // ---------------------------------------------------------------------------
 // Raw shape returned by the AI provider — uses "concept" per the assessment brief.
@@ -149,7 +150,8 @@ export class IdeaAgent implements IIdeaAgent {
 
   async generateIdeas(
     context: ClientContext,
-    previousIdeas: Idea[]
+    previousIdeas: Idea[],
+    memoryMatches?: MemoryMatch[]
   ): Promise<AgentResult<Idea[]>> {
     const start = Date.now();
 
@@ -158,7 +160,8 @@ export class IdeaAgent implements IIdeaAgent {
         context,
         this.config.ideaCount,
         previousIdeas,
-        this.config.creativityLevel
+        this.config.creativityLevel,
+        memoryMatches
       );
 
       const raw = await this.ai.generateStructured<RawIdeaFromAI[]>(prompt);

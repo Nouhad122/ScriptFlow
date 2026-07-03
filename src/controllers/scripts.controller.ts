@@ -24,8 +24,72 @@ import { aiConfig } from '../config/ai.config';
 import { scriptAgentConfig } from '../config/script.config';
 import { env } from '../config/env';
 import { getIdeaById } from '../database/ideas.repository';
-import { saveScript, getScriptByIdeaId } from '../database/scripts.repository';
+import { saveScript, getScriptByIdeaId, getAllScripts as dbGetAllScripts } from '../database/scripts.repository';
+import { getReviewByScriptId } from '../database/quality.repository';
+import { getMemoryWriteService } from '../memory';
 import type { ClientContext } from '../types';
+
+// ---------------------------------------------------------------------------
+// GET /api/scripts
+// ---------------------------------------------------------------------------
+
+export async function getAllScripts(_req: Request, res: Response): Promise<void> {
+  try {
+    const scripts = await dbGetAllScripts();
+    res.json({ success: true, count: scripts.length, scripts });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while fetching scripts',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/scripts/:scriptId/review
+// ---------------------------------------------------------------------------
+
+export async function getReviewForScript(req: Request, res: Response): Promise<void> {
+  const { scriptId } = req.params;
+  try {
+    const review = await getReviewByScriptId(scriptId);
+    if (!review) {
+      res.status(404).json({ success: false, error: 'No review found for this script' });
+      return;
+    }
+    res.json({ success: true, review });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while fetching review',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/scripts/by-idea/:ideaId
+// ---------------------------------------------------------------------------
+
+export async function getScriptForIdea(req: Request, res: Response): Promise<void> {
+  const { ideaId } = req.params;
+  try {
+    const script = await getScriptByIdeaId(ideaId);
+    if (!script) {
+      res.status(404).json({ success: false, error: 'No script found for this idea' });
+      return;
+    }
+    res.json({ success: true, script });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while fetching script',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/scripts/generate
+// ---------------------------------------------------------------------------
 
 export async function generateScript(req: Request, res: Response): Promise<void> {
   const { ideaId, clientContext } = req.body as {
@@ -124,6 +188,10 @@ export async function generateScript(req: Request, res: Response): Promise<void>
     });
     return;
   }
+
+  // ── Store in semantic memory (non-blocking) ─────────────────────────────────
+
+  void getMemoryWriteService()?.rememberGeneratedScript(result.data, idea);
 
   res.json({
     success: true,

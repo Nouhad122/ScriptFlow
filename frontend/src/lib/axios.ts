@@ -4,11 +4,14 @@ const baseURL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 10_000,
+  timeout: 30_000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
+
+// Long-running AI endpoints — override the global timeout per-request.
+export const AI_TIMEOUT_MS = 300_000 // 5 minutes: covers two sequential AI calls
 
 // Request interceptor — reserved for auth headers when authentication is added
 apiClient.interceptors.request.use(

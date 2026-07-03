@@ -39,6 +39,14 @@ const statusMap: Record<Status, StatusConfig> = {
     label: 'Hold',
     className: 'bg-orange-500/10 text-orange-400 border border-orange-500/20',
   },
+  completed: {
+    label: 'Completed',
+    className: 'bg-green-500/10 text-green-400 border border-green-500/20',
+  },
+  failed: {
+    label: 'Failed',
+    className: 'bg-red-500/10 text-red-400 border border-red-500/20',
+  },
 }
 
 interface StatusBadgeProps {

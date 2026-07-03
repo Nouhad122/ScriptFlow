@@ -10,9 +10,11 @@ import type { ClientContext, Idea } from '../types';
 import {
   saveIdeas as dbSaveIdeas,
   getPendingIdeas as dbGetPendingIdeas,
+  getApprovedIdeas as dbGetApprovedIdeas,
   updateIdeaApprovalStatus,
   getIdeaById,
 } from '../database/ideas.repository';
+import { getMemoryWriteService } from '../memory';
 
 // ---------------------------------------------------------------------------
 // POST /api/ideas/generate
@@ -194,6 +196,22 @@ export async function saveIdeas(req: Request, res: Response): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// GET /api/ideas/approved
+// ---------------------------------------------------------------------------
+
+export async function getApprovedIdeas(_req: Request, res: Response): Promise<void> {
+  try {
+    const ideas = await dbGetApprovedIdeas();
+    res.json({ success: true, count: ideas.length, ideas });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Database error while fetching approved ideas',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // GET /api/ideas/pending
 // ---------------------------------------------------------------------------
 
@@ -254,6 +272,10 @@ export async function approveIdea(req: Request, res: Response): Promise<void> {
     }
 
     res.json({ success: true, idea: updated });
+
+    if (status === 'approved') {
+      void getMemoryWriteService()?.rememberApprovedIdea(updated);
+    }
   } catch (error) {
     res.status(500).json({
       success: false,

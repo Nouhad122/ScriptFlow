@@ -16,14 +16,20 @@ import type {
   QualityReview,
   Script,
 } from '../types';
+import type { MemoryMatch } from '../memory';
 
 /**
  * Generates a batch of raw script concepts (ideas) for a client.
  * Draws all facts and proof from the ClientContext and Reference Pack.
- * Receives previousIdeas so it can avoid generating duplicates.
+ * Receives previousIdeas for same-session deduplication and memoryMatches
+ * (from MemorySearchService) so historically approved content shapes diversity.
  */
 export interface IIdeaAgent {
-  generateIdeas(context: ClientContext, previousIdeas: Idea[]): Promise<AgentResult<Idea[]>>;
+  generateIdeas(
+    context: ClientContext,
+    previousIdeas: Idea[],
+    memoryMatches?: MemoryMatch[]
+  ): Promise<AgentResult<Idea[]>>;
 }
 
 /**

@@ -56,6 +56,7 @@ export interface PipelineSummary {
  * calls = higher spend). The orchestrator records each stage independently.
  */
 export interface PipelineTimings {
+  memorySearchMs: number;
   ideaGenerationMs: number;
   iceScoringMs: number;
   persistenceMs: number;
