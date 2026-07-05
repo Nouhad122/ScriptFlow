@@ -8,14 +8,14 @@ This document explains the four key design decisions in `src/memory/`.
 
 Embedding vendors differ in API shape, vector dimension, pricing, quality, and rate limits:
 
-| Provider | Model | Dimensions | Best for |
+| Provider | Model | Dimensions | Notes |
 |---|---|---|---|
-| Voyage AI | `voyage-3-lite` | 512 | General content, fast |
-| Voyage AI | `voyage-3` | 1024 | Higher quality retrieval |
-| OpenAI | `text-embedding-3-small` | 1536 | When already on OpenAI |
-| Cohere | `embed-english-v3.0` | 1024 | Multilingual support |
+| OpenRouter | `openai/text-embedding-3-small` | 1536 | Current implementation |
+| OpenAI (direct) | `text-embedding-3-small` | 1536 | Drop-in swap via same interface |
+| OpenAI (direct) | `text-embedding-3-large` | 3072 | Higher quality, higher cost |
+| Cohere | `embed-english-v3.0` | 1024 | Multilingual alternative |
 
-Tying the application directly to the `voyageai` SDK would mean touching
+Tying the application directly to any one embedding SDK would mean touching
 `EmbeddingService` and every call site when switching providers. The
 `IEmbeddingProvider` interface exposes only what the memory module needs:
 
@@ -27,25 +27,25 @@ interface IEmbeddingProvider {
 }
 ```
 
-`VoyageEmbeddingProvider` implements this interface. `EmbeddingService` and
+`OpenRouterEmbeddingProvider` implements this interface. `EmbeddingService` and
 `MemoryRepository` depend only on `IEmbeddingProvider`. To swap providers:
 
 1. Create a new class implementing `IEmbeddingProvider`.
-2. Update the singleton instantiation in the Memory Agent.
+2. Update the singleton instantiation in `MemoryWriteService` and `MemorySearchService`.
 3. Re-embed stored entries (model change = incompatible vectors).
 
 Zero changes to `SimilaritySearch`, `MemoryRepository`, or any agent.
 
-This mirrors the `AIService` pattern used for text generation throughout V1.
+This mirrors the `AIService` pattern used for text generation throughout the app.
 
 ---
 
 ## 2. Why `SimilaritySearch` is separate from `MemoryRepository`
 
-These are two independent concerns composed by the Memory Agent:
+These are two independent concerns composed by the Memory services:
 
 ```
-Memory Agent
+MemorySearchService
     │
     ├── MemoryRepository.getEntriesByClient(clientId)
     │       → MemoryEntry[]          (I/O concern)
@@ -60,10 +60,10 @@ Memory Agent
   It can be unit-tested with plain arrays in microseconds.
 
 - `MemoryRepository` can be swapped for a vector database without changing the
-  ranking math. The Memory Agent re-wires which data source feeds the search.
+  ranking math. The service re-wires which data source feeds the search.
 
 - Future features (re-ranking by date, filtering by sourceType before scoring,
-  score thresholding) are added as steps in the Memory Agent, not by merging
+  score thresholding) are added as steps in `MemorySearchService`, not by merging
   logic into either class.
 
 - `cosineSimilarity` is exported as a standalone function so it can be reused
@@ -71,33 +71,32 @@ Memory Agent
 
 ---
 
-## 3. Why local cosine similarity is sufficient for Version 2
+## 3. Why local cosine similarity is sufficient
 
 **Scale argument:** A pipeline run generates 5–10 ideas and 0–5 scripts.
 After 100 runs the memory table holds at most 1,500 entries.
 
-**Performance measurement:** Scoring 1,500 entries with 512-dimensional vectors
+**Performance measurement:** Scoring 1,500 entries with 1536-dimensional vectors
 in a JavaScript loop:
 
 ```
-Operations: 1,500 × 512 multiplications = 768,000 FP ops
-On a modern CPU at ~1 billion FP ops/sec: < 1 ms
+Operations: 1,500 × 1,536 multiplications = ~2.3M FP ops
+On a modern CPU at ~1 billion FP ops/sec: < 5 ms
 ```
 
-**Comparison with alternatives at V2 scale:**
+**Comparison with alternatives at this scale:**
 
 | Approach | Latency | Complexity |
 |---|---|---|
-| In-process JS loop | < 1 ms | Zero setup |
+| In-process JS loop | < 5 ms | Zero setup |
 | sqlite-vec extension | ~0.5 ms | OS-level native compilation |
 | Pinecone / Qdrant | 20–100 ms network | New service, schema migration |
 
-The network round-trip to a vector database alone would be 20–100× slower than
+The network round-trip to a vector database alone would be 10–20× slower than
 the in-process loop at this data volume. sqlite-vec requires the native
 `libsqlite3-vec.dylib` / `.dll` / `.so` which adds OS-specific build steps.
 
-The in-process approach scales to ~100,000 entries before it becomes worth
-profiling. ScriptFlow V2 will not reach that threshold.
+The in-process approach scales comfortably to ~100,000 entries.
 
 ---
 
@@ -133,7 +132,7 @@ profiling. ScriptFlow V2 will not reach that threshold.
    Note: sqlite-vec uses distance (lower = closer), not similarity (higher = closer).
    Invert the sort direction.
 
-5. The `Memory Agent` interface stays identical — it still receives `MemoryEntry[]`
+5. The service interface stays identical — it still receives `MemoryEntry[]`
    and `SimilarityResult[]`. Only `MemoryRepository` and `SimilaritySearch` change.
 
 **When to choose this:** When entries grow beyond ~50,000 or when the app needs
@@ -177,19 +176,20 @@ needs multi-tenant isolation with enterprise SLA guarantees.
 
 ```
 src/memory/
-  types.ts                    MemoryEntry, SimilarityResult, EmbeddingProviderError
-  EmbeddingProvider.ts        IEmbeddingProvider interface
-  VoyageEmbeddingProvider.ts  Voyage AI implementation
-  SimilaritySearch.ts         cosineSimilarity(), SimilaritySearch class
-  EmbeddingService.ts         embedIdea(), embedScript()
-  MemoryRepository.ts         saveEntry(), getAllEntries(), getEntriesByClient()
-  index.ts                    Public re-exports (the module's API surface)
+  types.ts                           MemoryEntry, MemoryMatch, SimilarityResult, EmbeddingProviderError
+  EmbeddingProvider.ts               IEmbeddingProvider interface
+  OpenRouterEmbeddingProvider.ts     OpenRouter implementation (openai/text-embedding-3-small)
+  EmbeddingService.ts                embedIdea(), embedScript(), embedText()
+  MemoryRepository.ts                saveEntry(), getAllEntries(), getEntriesByClient()
+  SimilaritySearch.ts                cosineSimilarity(), SimilaritySearch class
+  MemoryWriteService.ts              rememberApprovedIdea(), rememberGeneratedScript()
+  MemorySearchService.ts             findSimilarContent() — used by PipelineOrchestrator
+  index.ts                           Public re-exports (the module's API surface)
   __tests__/
-    similarity.test.ts        Pure math tests — no DB, no provider
-    embedding.service.test.ts Mock provider tests — no DB, no network
-    memory.repository.test.ts In-memory SQLite integration tests
-  MEMORY_ARCHITECTURE.md      This document
+    similarity.test.ts               Pure math tests — no DB, no provider
+    embedding.service.test.ts        Mock provider tests — no DB, no network
+    memory.repository.test.ts        In-memory SQLite integration tests
+    memory.write.service.test.ts     Write service tests with mock provider
+    memory.search.service.test.ts    Search service tests with mock provider
+  MEMORY_ARCHITECTURE.md             This document
 ```
-
-Nothing outside `src/memory/` imports from this module in V2.
-The Memory Agent (V2 Phase 2) will be the sole external consumer.

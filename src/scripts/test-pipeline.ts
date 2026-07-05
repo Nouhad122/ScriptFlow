@@ -114,7 +114,9 @@ async function test(label: string, fn: () => void | Promise<void>): Promise<void
 async function runTests(): Promise<void> {
   console.log('\n=== ScriptFlow — Pipeline Integration Test ===\n');
   console.log(`  Model    : ${aiConfig.model}`);
-  console.log(`  Key      : ${env.openrouterApiKey ? `${env.openrouterApiKey.slice(0, 10)}...` : 'NOT SET'}`);
+  console.log(
+    `  Key      : ${env.openrouterApiKey ? `${env.openrouterApiKey.slice(0, 10)}...` : 'NOT SET'}`
+  );
   console.log(`  Note     : This test calls the real AI and writes to the real database.\n`);
 
   await runMigrations();
@@ -191,7 +193,8 @@ async function runTests(): Promise<void> {
 
   // 7. Summary counts are internally consistent
   await test('summary candidate counts add up to totalIdeas', () => {
-    const sum = summary.approvedCandidates + summary.considerCandidates + summary.rejectedCandidates;
+    const sum =
+      summary.approvedCandidates + summary.considerCandidates + summary.rejectedCandidates;
     if (sum !== summary.totalIdeas) {
       throw new Error(
         `${summary.approvedCandidates} + ${summary.considerCandidates} + ${summary.rejectedCandidates} = ${sum}, expected ${summary.totalIdeas}`
@@ -207,13 +210,19 @@ async function runTests(): Promise<void> {
       reject: ideas.filter((i) => i.iceScore?.recommendation === 'REJECT').length,
     };
     if (actual.approve !== summary.approvedCandidates) {
-      throw new Error(`approvedCandidates: summary=${summary.approvedCandidates}, actual=${actual.approve}`);
+      throw new Error(
+        `approvedCandidates: summary=${summary.approvedCandidates}, actual=${actual.approve}`
+      );
     }
     if (actual.consider !== summary.considerCandidates) {
-      throw new Error(`considerCandidates: summary=${summary.considerCandidates}, actual=${actual.consider}`);
+      throw new Error(
+        `considerCandidates: summary=${summary.considerCandidates}, actual=${actual.consider}`
+      );
     }
     if (actual.reject !== summary.rejectedCandidates) {
-      throw new Error(`rejectedCandidates: summary=${summary.rejectedCandidates}, actual=${actual.reject}`);
+      throw new Error(
+        `rejectedCandidates: summary=${summary.rejectedCandidates}, actual=${actual.reject}`
+      );
     }
   });
 
@@ -241,15 +250,21 @@ async function runTests(): Promise<void> {
     const fromDb = await getIdeaById(firstIdea.id);
     if (!fromDb) throw new Error(`idea ${firstIdea.id} not found in database after pipeline`);
     if (fromDb.pipelineRunId !== pipelineRunId) {
-      throw new Error(`DB pipelineRunId="${fromDb.pipelineRunId}" does not match run "${pipelineRunId}"`);
+      throw new Error(
+        `DB pipelineRunId="${fromDb.pipelineRunId}" does not match run "${pipelineRunId}"`
+      );
     }
     if (!fromDb.iceScore) throw new Error('idea in DB has null iceScore after pipeline');
   });
 
   // Summary
   console.log(`\n  pipelineRunId : ${pipelineRunId}`);
-  console.log(`  Ideas         : ${summary.totalIdeas} (APPROVE: ${summary.approvedCandidates}, CONSIDER: ${summary.considerCandidates}, REJECT: ${summary.rejectedCandidates})`);
-  console.log(`  Timings       : idea=${timings.ideaGenerationMs}ms  ice=${timings.iceScoringMs}ms  persist=${timings.persistenceMs}ms  total=${timings.totalMs}ms`);
+  console.log(
+    `  Ideas         : ${summary.totalIdeas} (APPROVE: ${summary.approvedCandidates}, CONSIDER: ${summary.considerCandidates}, REJECT: ${summary.rejectedCandidates})`
+  );
+  console.log(
+    `  Timings       : idea=${timings.ideaGenerationMs}ms  ice=${timings.iceScoringMs}ms  persist=${timings.persistenceMs}ms  total=${timings.totalMs}ms`
+  );
   console.log(`\n---`);
   console.log(`Results: ${passed} passed, ${failed} failed\n`);
 

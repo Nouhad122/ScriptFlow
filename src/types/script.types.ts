@@ -25,11 +25,11 @@
 export type ScriptStatus = 'pending_review' | 'passed' | 'held';
 
 export interface ScriptBody {
-  problem: string;   // the pain/problem the idea addresses — makes the viewer feel seen
-  story: string;     // narrative bridge from problem to solution — creates emotional connection
-  solution: string;  // the promise/solution offered — what changes if they act
-  proof: string;     // evidence exclusively from the proof bank — never fabricated
-  cta: string;       // call to action — specific, low-friction, natural
+  problem: string; // the pain/problem the idea addresses — makes the viewer feel seen
+  story: string; // narrative bridge from problem to solution — creates emotional connection
+  solution: string; // the promise/solution offered — what changes if they act
+  proof: string; // evidence exclusively from the proof bank — never fabricated
+  cta: string; // call to action — specific, low-friction, natural
 }
 
 export interface Script {

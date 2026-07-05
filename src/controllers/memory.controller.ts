@@ -7,7 +7,7 @@
  *   and translate the two non-success cases into the documented response shapes.
  *
  * WHY SUCCESS WHEN THE KEY IS MISSING:
- *   A missing VOYAGE_API_KEY is a configuration choice, not a runtime failure.
+ *   A missing OPENROUTER_API_KEY is a configuration choice, not a runtime failure.
  *   The system is operating normally — semantic memory is simply disabled.
  *   Returning 200 + warning lets the frontend distinguish "nothing found yet"
  *   from "search not configured" without error-handling branching.

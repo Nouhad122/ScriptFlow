@@ -67,9 +67,7 @@ function validateScore(score: number, fieldName: string, index: number): void {
 
 function validateRawScores(raw: unknown, ideaIds: Set<string>): RawScoreFromAI[] {
   if (!Array.isArray(raw)) {
-    throw new Error(
-      `Expected a JSON array from the AI but received: ${typeof raw}`
-    );
+    throw new Error(`Expected a JSON array from the AI but received: ${typeof raw}`);
   }
   if (raw.length === 0) {
     throw new Error('AI returned an empty scores array');
@@ -86,9 +84,7 @@ function validateRawScores(raw: unknown, ideaIds: Set<string>): RawScoreFromAI[]
       throw new Error(`Score at index ${i}: missing or invalid "ideaId"`);
     }
     if (!ideaIds.has(ideaId)) {
-      throw new Error(
-        `Score at index ${i}: "ideaId" "${ideaId}" does not match any input idea`
-      );
+      throw new Error(`Score at index ${i}: "ideaId" "${ideaId}" does not match any input idea`);
     }
     if (seenIds.has(ideaId)) {
       throw new Error(`Score at index ${i}: duplicate score for ideaId "${ideaId}"`);
@@ -158,10 +154,7 @@ export class IceScoringAgent implements IIceScoringAgent {
     this.config = config;
   }
 
-  async scoreIdeas(
-    ideas: Idea[],
-    context: ClientContext
-  ): Promise<AgentResult<Idea[]>> {
+  async scoreIdeas(ideas: Idea[], context: ClientContext): Promise<AgentResult<Idea[]>> {
     const start = Date.now();
 
     try {

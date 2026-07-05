@@ -3,7 +3,7 @@
  *
  * WHY THIS ABSTRACTION EXISTS:
  *   Embedding vendors differ in API shape, model naming, pricing, and quality.
- *   Tying the application directly to the `voyageai` SDK would mean touching
+ *   Tying the application directly to any one embedding SDK would mean touching
  *   EmbeddingService and MemoryRepository every time we switch providers.
  *   IEmbeddingProvider exposes only what the memory module needs: a model name,
  *   a single-text embed call, and a batch embed call.

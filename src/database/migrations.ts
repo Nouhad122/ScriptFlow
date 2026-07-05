@@ -189,9 +189,7 @@ export async function runMigrations(): Promise<void> {
   `);
 
   const applied = new Set(
-    (await db.execute('SELECT id FROM schema_migrations')).rows.map(
-      (row) => row['id'] as string
-    )
+    (await db.execute('SELECT id FROM schema_migrations')).rows.map((row) => row['id'] as string)
   );
 
   for (const migration of MIGRATIONS) {

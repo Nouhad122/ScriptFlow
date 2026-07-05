@@ -15,9 +15,12 @@ import type { CreativityLevel } from '../config/idea.config';
 import type { MemoryMatch } from '../memory/types';
 
 const CREATIVITY_INSTRUCTION: Record<CreativityLevel, string> = {
-  focused: 'Focus on the highest-converting proven angles for this niche. Prioritise clarity and directness over novelty.',
-  balanced: 'Balance proven direct-response angles with fresh perspectives. Mix familiar structures with unexpected hooks.',
-  experimental: 'Push creative boundaries. Use unexpected angles, counterintuitive hooks, and formats the target audience has not seen before.',
+  focused:
+    'Focus on the highest-converting proven angles for this niche. Prioritise clarity and directness over novelty.',
+  balanced:
+    'Balance proven direct-response angles with fresh perspectives. Mix familiar structures with unexpected hooks.',
+  experimental:
+    'Push creative boundaries. Use unexpected angles, counterintuitive hooks, and formats the target audience has not seen before.',
 };
 
 function buildMemorySection(matches: MemoryMatch[]): string {

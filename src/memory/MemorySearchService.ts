@@ -42,9 +42,9 @@ import type { ClientContext } from '../types/client.types';
 
 function composeClientQuery(context: ClientContext): string {
   const avatarNames = context.avatars.map((a) => a.name).join(', ');
-  const allPains    = context.avatars.flatMap((a) => a.pains).join('\n');
-  const allDesires  = context.avatars.flatMap((a) => a.desires).join('\n');
-  const offer       = `${context.offerMechanics.productName} — ${context.offerMechanics.keyBenefits.join(', ')}`;
+  const allPains = context.avatars.flatMap((a) => a.pains).join('\n');
+  const allDesires = context.avatars.flatMap((a) => a.desires).join('\n');
+  const offer = `${context.offerMechanics.productName} — ${context.offerMechanics.keyBenefits.join(', ')}`;
 
   return [
     `Target Avatar:\n${avatarNames}`,
@@ -59,32 +59,21 @@ export class MemorySearchService {
   constructor(
     private readonly embeddingService: EmbeddingService,
     private readonly repository: MemoryRepository,
-    private readonly similaritySearch: SimilaritySearch,
+    private readonly similaritySearch: SimilaritySearch
   ) {}
 
   async findSimilarContent(
     context: ClientContext,
     topK: number = memorySearchConfig.topK,
-    threshold: number = memorySearchConfig.threshold,
+    threshold: number = memorySearchConfig.threshold
   ): Promise<MemoryMatch[]> {
     const start = Date.now();
     console.log(`[Memory Search] Started for client: ${context.id}`);
 
     const query = composeClientQuery(context);
-
-    // ── DEBUG ─────────────────────────────────────────────────────────────────
-    console.log('\n[Memory Search Debug] Memory Query:\n' + query + '\n');
-    // ─────────────────────────────────────────────────────────────────────────
-
     const queryEmbedding = await this.embeddingService.embedText(query);
 
     const candidates = await this.repository.getEntriesByClient(context.id);
-
-    // ── DEBUG ─────────────────────────────────────────────────────────────────
-    console.log(
-      `[Memory Search Debug] Candidates: ${candidates.length} | Client: ${context.id} | Model: ${this.embeddingService.modelName}`,
-    );
-    // ─────────────────────────────────────────────────────────────────────────
 
     if (candidates.length === 0) {
       const durationMs = Date.now() - start;
@@ -96,38 +85,14 @@ export class MemorySearchService {
     const allResults = this.similaritySearch.findMostSimilar(
       queryEmbedding,
       candidates,
-      candidates.length,
+      candidates.length
     );
 
-    // ── DEBUG ─────────────────────────────────────────────────────────────────
-    console.log('\n[Memory Search Debug] Memory Search Results (before threshold filter):');
-    for (const r of allResults) {
-      console.log(`  ${r.entry.sourceType.padEnd(6)}  ${r.entry.sourceId}  ${r.score.toFixed(4)}`);
-    }
-
-    const scores = allResults.map((r) => r.score);
-    const highest = Math.max(...scores);
-    const lowest  = Math.min(...scores);
-    const average = scores.reduce((sum, s) => sum + s, 0) / scores.length;
-    console.log(
-      `\n[Memory Search Debug] Stats — Highest: ${highest.toFixed(4)} | Lowest: ${lowest.toFixed(4)} | ` +
-      `Average: ${average.toFixed(4)} | Threshold: ${threshold} | TopK: ${topK}`,
-    );
-    // ─────────────────────────────────────────────────────────────────────────
-
-    const filtered = allResults
-      .filter((r) => r.score >= threshold)
-      .slice(0, topK);
-
-    // ── DEBUG ─────────────────────────────────────────────────────────────────
-    if (filtered.length === 0) {
-      console.log('[Memory Search Debug] All candidates were below the configured threshold.\n');
-    }
-    // ─────────────────────────────────────────────────────────────────────────
+    const filtered = allResults.filter((r) => r.score >= threshold).slice(0, topK);
 
     const durationMs = Date.now() - start;
     console.log(
-      `[Memory Search] Completed — ${candidates.length} candidates, ${filtered.length} matches found (${durationMs}ms)`,
+      `[Memory Search] Completed — ${candidates.length} candidates, ${filtered.length} matches found (${durationMs}ms)`
     );
 
     return filtered.map((r) => ({
@@ -156,7 +121,7 @@ export function createMemorySearchService(openrouterApiKey: string): MemorySearc
   } catch (err) {
     console.warn(
       '[Memory Search] Failed to initialise MemorySearchService:',
-      err instanceof Error ? err.message : String(err),
+      err instanceof Error ? err.message : String(err)
     );
     return null;
   }
@@ -169,7 +134,7 @@ export function getMemorySearchService(): MemorySearchService | null {
   if (!env.openrouterApiKey.trim()) {
     console.warn(
       '[Memory Search] OPENROUTER_API_KEY is not set — memory search disabled. ' +
-        'Idea generation will proceed without historical context.',
+        'Idea generation will proceed without historical context.'
     );
     _instance = null;
     return null;

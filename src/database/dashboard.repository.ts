@@ -87,14 +87,14 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const sr = scriptsResult.rows[0];
 
   return {
-    pipelines:        Number(ir['pipelines']         ?? 0),
-    ideasGenerated:   Number(ir['ideas_generated']   ?? 0),
-    pendingIdeas:     Number(ir['pending_ideas']      ?? 0),
-    approvedIdeas:    Number(ir['approved_ideas']     ?? 0),
-    rejectedIdeas:    Number(ir['rejected_ideas']     ?? 0),
+    pipelines: Number(ir['pipelines'] ?? 0),
+    ideasGenerated: Number(ir['ideas_generated'] ?? 0),
+    pendingIdeas: Number(ir['pending_ideas'] ?? 0),
+    approvedIdeas: Number(ir['approved_ideas'] ?? 0),
+    rejectedIdeas: Number(ir['rejected_ideas'] ?? 0),
     scriptsGenerated: Number(sr['scripts_generated'] ?? 0),
-    pendingReviews:   Number(sr['pending_reviews']    ?? 0),
-    passedReviews:    Number(sr['passed_reviews']     ?? 0),
-    heldReviews:      Number(sr['held_reviews']       ?? 0),
+    pendingReviews: Number(sr['pending_reviews'] ?? 0),
+    passedReviews: Number(sr['passed_reviews'] ?? 0),
+    heldReviews: Number(sr['held_reviews'] ?? 0),
   };
 }

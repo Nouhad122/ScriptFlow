@@ -39,9 +39,7 @@ export function buildQualityReviewPrompt(
     `  Solution: "${script.body.solution}"\n` +
     `  Proof:    "${script.body.proof}"\n` +
     `  CTA:      "${script.body.cta}"` +
-    (script.productionNotes
-      ? `\n  Production Notes: "${script.productionNotes}"`
-      : '');
+    (script.productionNotes ? `\n  Production Notes: "${script.productionNotes}"` : '');
 
   const ideaBlock =
     `  Hook Line (approved concept): "${idea.hookLine}"\n` +

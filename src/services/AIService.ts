@@ -119,9 +119,7 @@ export class AIService {
       if (error instanceof APIError) {
         throw new AIProviderError(error.message, error.status);
       }
-      throw new AIProviderError(
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      throw new AIProviderError(error instanceof Error ? error.message : 'Unknown error');
     }
   }
 

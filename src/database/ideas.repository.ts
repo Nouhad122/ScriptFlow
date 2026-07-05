@@ -18,7 +18,14 @@
  */
 
 import { getDb } from './connection';
-import type { Idea, IceScore, IceRecommendation, CreativeType, LeadType, ApprovalStatus } from '../types';
+import type {
+  Idea,
+  IceScore,
+  IceRecommendation,
+  CreativeType,
+  LeadType,
+  ApprovalStatus,
+} from '../types';
 import type { Row } from '@libsql/client';
 
 // ---------------------------------------------------------------------------

@@ -19,12 +19,12 @@ import type { ClientContext } from '../../types/client.types';
 //   V_SIM_0_0: similarity = 0.00  (far below threshold)
 
 const QUERY_VECTOR = [1, 0, 0];
-const V_SIM_1_0   = [1, 0, 0];
-const V_SIM_0_9   = [0.9, Math.sqrt(1 - 0.81), 0];   // |v| = 1.0, cos sim = 0.9
-const V_SIM_0_8   = [0.8, 0.6, 0];                    // |v| = 1.0, cos sim = 0.8
-const V_SIM_0_7   = [0.7, Math.sqrt(1 - 0.49), 0];   // |v| = 1.0, cos sim = 0.7
-const V_SIM_0_5   = [0.5, Math.sqrt(1 - 0.25), 0];   // |v| = 1.0, cos sim = 0.5
-const V_SIM_0_0   = [0, 1, 0];                        // |v| = 1.0, cos sim = 0.0
+const V_SIM_1_0 = [1, 0, 0];
+const V_SIM_0_9 = [0.9, Math.sqrt(1 - 0.81), 0]; // |v| = 1.0, cos sim = 0.9
+const V_SIM_0_8 = [0.8, 0.6, 0]; // |v| = 1.0, cos sim = 0.8
+const V_SIM_0_7 = [0.7, Math.sqrt(1 - 0.49), 0]; // |v| = 1.0, cos sim = 0.7
+const V_SIM_0_5 = [0.5, Math.sqrt(1 - 0.25), 0]; // |v| = 1.0, cos sim = 0.5
+const V_SIM_0_0 = [0, 1, 0]; // |v| = 1.0, cos sim = 0.0
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ function makeEntry(
   id: string,
   sourceType: 'idea' | 'script',
   embedding: number[],
-  text = `Text for entry ${id}`,
+  text = `Text for entry ${id}`
 ): MemoryEntry {
   return {
     id,
@@ -100,7 +100,7 @@ function makeService(entries: MemoryEntry[] = [], queryVector = QUERY_VECTOR): M
   return new MemorySearchService(
     makeMockEmbeddingService(queryVector),
     makeMockRepository(entries),
-    realSearch,
+    realSearch
   );
 }
 
@@ -116,7 +116,12 @@ describe('MemorySearchService.findSimilarContent', () => {
 
   // Test 2 — one match above threshold
   it('returns a match when one entry has similarity above the default threshold', async () => {
-    const entry = makeEntry('e1', 'idea', V_SIM_1_0, 'Hook: Stop trading time for money\nAvatar: Entrepreneur');
+    const entry = makeEntry(
+      'e1',
+      'idea',
+      V_SIM_1_0,
+      'Hook: Stop trading time for money\nAvatar: Entrepreneur'
+    );
     const service = makeService([entry]);
 
     const result = await service.findSimilarContent(MOCK_CONTEXT);
@@ -143,9 +148,9 @@ describe('MemorySearchService.findSimilarContent', () => {
   // Test 4 — top-K ordering: sorted descending, capped at topK
   it('returns matches sorted by similarity descending, limited to topK', async () => {
     const entries = [
-      makeEntry('low',  'idea',   V_SIM_0_8),   // 0.80
-      makeEntry('high', 'idea',   V_SIM_1_0),   // 1.00
-      makeEntry('mid',  'script', V_SIM_0_9),   // ~0.90
+      makeEntry('low', 'idea', V_SIM_0_8), // 0.80
+      makeEntry('high', 'idea', V_SIM_1_0), // 1.00
+      makeEntry('mid', 'script', V_SIM_0_9), // ~0.90
     ];
     const service = makeService(entries);
 
@@ -159,10 +164,7 @@ describe('MemorySearchService.findSimilarContent', () => {
 
   // Test 5 — all entries below threshold → empty result
   it('returns an empty array when all entries fall below the threshold', async () => {
-    const entries = [
-      makeEntry('a', 'idea',   V_SIM_0_5),
-      makeEntry('b', 'script', V_SIM_0_0),
-    ];
+    const entries = [makeEntry('a', 'idea', V_SIM_0_5), makeEntry('b', 'script', V_SIM_0_0)];
     const service = makeService(entries);
 
     const result = await service.findSimilarContent(MOCK_CONTEXT);
@@ -178,7 +180,9 @@ describe('MemorySearchService.findSimilarContent', () => {
     } as unknown as EmbeddingService;
     const service = new MemorySearchService(embedSvc, makeMockRepository([]), realSearch);
 
-    await expect(service.findSimilarContent(MOCK_CONTEXT)).rejects.toThrow('OpenRouter embedding failed');
+    await expect(service.findSimilarContent(MOCK_CONTEXT)).rejects.toThrow(
+      'OpenRouter embedding failed'
+    );
   });
 
   // Test 7 — MemoryMatch shape

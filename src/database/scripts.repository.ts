@@ -144,7 +144,7 @@ export async function getAllScripts(): Promise<(Script & { ideaHookLine: string 
     JOIN ideas i ON s.idea_id = i.id
     ORDER BY s.created_at DESC
   `);
-  return result.rows.map(row => ({
+  return result.rows.map((row) => ({
     ...rowToScript(row),
     ideaHookLine: row['idea_hook_line'] as string,
   }));
@@ -155,10 +155,7 @@ export async function getAllScripts(): Promise<(Script & { ideaHookLine: string 
  * Valid transitions: pending_review → passed | held.
  * Returns null if no script with that id exists.
  */
-export async function updateScriptStatus(
-  id: string,
-  status: ScriptStatus
-): Promise<Script | null> {
+export async function updateScriptStatus(id: string, status: ScriptStatus): Promise<Script | null> {
   const db = getDb();
   const result = await db.execute({
     sql: 'UPDATE scripts SET status = ? WHERE id = ?',

@@ -48,7 +48,10 @@ function makeIdea(overrides: Partial<Idea> = {}): Idea {
     creativeType: 'story',
     angle: 'transformation story',
     leadType: 'problem-led',
-    supportingProofPoints: ['Client A went from $0 to $8k MRR in 12 weeks', 'Client B scaled to $15k in 3 months'],
+    supportingProofPoints: [
+      'Client A went from $0 to $8k MRR in 12 weeks',
+      'Client B scaled to $15k in 3 months',
+    ],
     targetAvatar: 'Struggling Freelancer',
     targetPain: 'Not knowing how to get consistent clients',
     iceScore: {
@@ -131,22 +134,27 @@ async function runTests(): Promise<void> {
     const updated = await updateIdeaApprovalStatus(ideaA.id, 'approved');
     const after = Date.now();
     if (!updated) throw new Error('returned null for existing id');
-    if (updated.approvalStatus !== 'approved') throw new Error(`expected 'approved', got '${updated.approvalStatus}'`);
+    if (updated.approvalStatus !== 'approved')
+      throw new Error(`expected 'approved', got '${updated.approvalStatus}'`);
     if (updated.id !== ideaA.id) throw new Error('returned wrong idea');
     if (!updated.approvedAt) throw new Error('approvedAt is null after approval');
     if (!(updated.approvedAt instanceof Date)) throw new Error('approvedAt is not a Date');
     const approvedMs = updated.approvedAt.getTime();
-    if (approvedMs < before || approvedMs > after) throw new Error('approvedAt is outside expected time range');
-    if (updated.approvedBy !== 'manual') throw new Error(`expected approvedBy = 'manual', got '${updated.approvedBy}'`);
+    if (approvedMs < before || approvedMs > after)
+      throw new Error('approvedAt is outside expected time range');
+    if (updated.approvedBy !== 'manual')
+      throw new Error(`expected approvedBy = 'manual', got '${updated.approvedBy}'`);
   });
 
   // 4. Reject ideaB — verify status, approvedAt, approvedBy
   await test('updateIdeaApprovalStatus() rejects an idea and sets approval metadata', async () => {
     const updated = await updateIdeaApprovalStatus(ideaB.id, 'rejected');
     if (!updated) throw new Error('returned null for existing id');
-    if (updated.approvalStatus !== 'rejected') throw new Error(`expected 'rejected', got '${updated.approvalStatus}'`);
+    if (updated.approvalStatus !== 'rejected')
+      throw new Error(`expected 'rejected', got '${updated.approvalStatus}'`);
     if (!updated.approvedAt) throw new Error('approvedAt is null after rejection');
-    if (updated.approvedBy !== 'manual') throw new Error(`expected approvedBy = 'manual', got '${updated.approvedBy}'`);
+    if (updated.approvedBy !== 'manual')
+      throw new Error(`expected approvedBy = 'manual', got '${updated.approvedBy}'`);
   });
 
   // 5. Pending queue now contains only ideaC
@@ -165,9 +173,12 @@ async function runTests(): Promise<void> {
     if (idea.hookLine !== ideaA.hookLine) throw new Error(`hookLine mismatch: "${idea.hookLine}"`);
     if (!idea.iceScore) throw new Error('iceScore is null after round-trip');
     if (idea.iceScore.impact !== 8) throw new Error(`impact mismatch: ${idea.iceScore.impact}`);
-    if (idea.iceScore.recommendation !== 'APPROVE') throw new Error(`recommendation mismatch: ${idea.iceScore.recommendation}`);
-    if (!Array.isArray(idea.supportingProofPoints)) throw new Error('supportingProofPoints is not an array after round-trip');
-    if (idea.supportingProofPoints.length !== 2) throw new Error(`expected 2 proof points, got ${idea.supportingProofPoints.length}`);
+    if (idea.iceScore.recommendation !== 'APPROVE')
+      throw new Error(`recommendation mismatch: ${idea.iceScore.recommendation}`);
+    if (!Array.isArray(idea.supportingProofPoints))
+      throw new Error('supportingProofPoints is not an array after round-trip');
+    if (idea.supportingProofPoints.length !== 2)
+      throw new Error(`expected 2 proof points, got ${idea.supportingProofPoints.length}`);
   });
 
   // 7. getIdeaById returns null for unknown id
@@ -189,7 +200,9 @@ async function runTests(): Promise<void> {
     const idea = await getIdeaById(ideaA.id);
     if (!idea) throw new Error('idea not found after re-save');
     if (idea.approvalStatus !== 'approved') {
-      throw new Error(`INSERT OR IGNORE failed: approval status was overwritten to '${idea.approvalStatus}'`);
+      throw new Error(
+        `INSERT OR IGNORE failed: approval status was overwritten to '${idea.approvalStatus}'`
+      );
     }
   });
 
@@ -204,8 +217,10 @@ async function runTests(): Promise<void> {
   await test('fresh ideas have approvedAt: null and approvedBy: null', async () => {
     const idea = await getIdeaById(ideaC.id);
     if (!idea) throw new Error('returned null for existing id');
-    if (idea.approvedAt !== null) throw new Error(`expected approvedAt = null, got '${idea.approvedAt}'`);
-    if (idea.approvedBy !== null) throw new Error(`expected approvedBy = null, got '${idea.approvedBy}'`);
+    if (idea.approvedAt !== null)
+      throw new Error(`expected approvedAt = null, got '${idea.approvedAt}'`);
+    if (idea.approvedBy !== null)
+      throw new Error(`expected approvedBy = null, got '${idea.approvedBy}'`);
   });
 
   // Summary

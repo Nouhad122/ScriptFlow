@@ -129,14 +129,14 @@ describe('MemoryWriteService.rememberApprovedIdea', () => {
 
   it('does not throw when embedIdea rejects', async () => {
     (embedSvc.embedIdea as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('OpenRouter embedding failed'),
+      new Error('OpenRouter embedding failed')
     );
     await expect(service.rememberApprovedIdea(testIdea)).resolves.toBeUndefined();
   });
 
   it('does not throw when saveEntry rejects', async () => {
     (repo.saveEntry as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('UNIQUE constraint failed: memory_entries.source_type, memory_entries.source_id'),
+      new Error('UNIQUE constraint failed: memory_entries.source_type, memory_entries.source_id')
     );
     await expect(service.rememberApprovedIdea(testIdea)).resolves.toBeUndefined();
   });
@@ -198,11 +198,9 @@ describe('MemoryWriteService.rememberGeneratedScript', () => {
 
   it('does not throw when embedScript rejects', async () => {
     (embedSvc.embedScript as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('OpenRouter rate limit exceeded'),
+      new Error('OpenRouter rate limit exceeded')
     );
-    await expect(
-      service.rememberGeneratedScript(testScript, testIdea),
-    ).resolves.toBeUndefined();
+    await expect(service.rememberGeneratedScript(testScript, testIdea)).resolves.toBeUndefined();
   });
 });
 
@@ -211,9 +209,13 @@ describe('MemoryWriteService.rememberGeneratedScript', () => {
 describe('duplicate prevention', () => {
   it('does not throw when saveEntry rejects with a UNIQUE constraint violation', async () => {
     const repo = makeMockRepository({
-      saveEntry: vi.fn().mockRejectedValue(
-        new Error('UNIQUE constraint failed: memory_entries.source_type, memory_entries.source_id'),
-      ),
+      saveEntry: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            'UNIQUE constraint failed: memory_entries.source_type, memory_entries.source_id'
+          )
+        ),
     });
     const service = new MemoryWriteService(makeMockEmbeddingService(), repo);
 
@@ -223,7 +225,7 @@ describe('duplicate prevention', () => {
   });
 });
 
-// ── Missing VOYAGE_API_KEY ────────────────────────────────────────────────────
+// ── Missing OPENROUTER_API_KEY ────────────────────────────────────────────────
 
 describe('createMemoryWriteService', () => {
   it('returns null when the key is an empty string', () => {

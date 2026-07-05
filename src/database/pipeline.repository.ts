@@ -31,21 +31,21 @@ export interface PipelineAnalytics {
 
 function rowToRecord(row: Row): PipelineRunRecord {
   return {
-    id:                 row['id'] as string,
-    clientId:           row['client_id'] as string,
-    status:             row['status'] as 'completed' | 'failed',
-    totalIdeas:         Number(row['total_ideas']         ?? 0),
+    id: row['id'] as string,
+    clientId: row['client_id'] as string,
+    status: row['status'] as 'completed' | 'failed',
+    totalIdeas: Number(row['total_ideas'] ?? 0),
     approvedCandidates: Number(row['approved_candidates'] ?? 0),
     considerCandidates: Number(row['consider_candidates'] ?? 0),
     rejectedCandidates: Number(row['rejected_candidates'] ?? 0),
-    ideaGenerationMs:   row['idea_generation_ms'] !== null ? Number(row['idea_generation_ms']) : null,
-    iceScoringMs:       row['ice_scoring_ms']      !== null ? Number(row['ice_scoring_ms'])      : null,
-    persistenceMs:      row['persistence_ms']      !== null ? Number(row['persistence_ms'])      : null,
-    totalMs:            row['total_ms']            !== null ? Number(row['total_ms'])            : null,
-    failedStage:        (row['failed_stage']   as string | null) ?? null,
-    errorMessage:       (row['error_message']  as string | null) ?? null,
-    startedAt:          new Date(row['started_at']   as string),
-    completedAt:        row['completed_at'] ? new Date(row['completed_at'] as string) : null,
+    ideaGenerationMs: row['idea_generation_ms'] !== null ? Number(row['idea_generation_ms']) : null,
+    iceScoringMs: row['ice_scoring_ms'] !== null ? Number(row['ice_scoring_ms']) : null,
+    persistenceMs: row['persistence_ms'] !== null ? Number(row['persistence_ms']) : null,
+    totalMs: row['total_ms'] !== null ? Number(row['total_ms']) : null,
+    failedStage: (row['failed_stage'] as string | null) ?? null,
+    errorMessage: (row['error_message'] as string | null) ?? null,
+    startedAt: new Date(row['started_at'] as string),
+    completedAt: row['completed_at'] ? new Date(row['completed_at'] as string) : null,
   };
 }
 
@@ -99,20 +99,20 @@ export async function getAllPipelineRuns(): Promise<{
   ]);
 
   const runs = runsResult.rows.map(rowToRecord);
-  const ar   = analyticsResult.rows[0];
+  const ar = analyticsResult.rows[0];
 
-  const totalRuns     = Number(ar['total_runs']     ?? 0);
+  const totalRuns = Number(ar['total_runs'] ?? 0);
   const completedRuns = Number(ar['completed_runs'] ?? 0);
-  const failedRuns    = Number(ar['failed_runs']    ?? 0);
+  const failedRuns = Number(ar['failed_runs'] ?? 0);
 
   const analytics: PipelineAnalytics = {
     totalRuns,
     completedRuns,
     failedRuns,
-    successRate:    totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0,
-    averageTotalMs: ar['avg_total_ms']    !== null ? Math.round(Number(ar['avg_total_ms']))    : null,
-    longestTotalMs: ar['longest_total_ms'] !== null ? Number(ar['longest_total_ms'])            : null,
-    fastestTotalMs: ar['fastest_total_ms'] !== null ? Number(ar['fastest_total_ms'])            : null,
+    successRate: totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0,
+    averageTotalMs: ar['avg_total_ms'] !== null ? Math.round(Number(ar['avg_total_ms'])) : null,
+    longestTotalMs: ar['longest_total_ms'] !== null ? Number(ar['longest_total_ms']) : null,
+    fastestTotalMs: ar['fastest_total_ms'] !== null ? Number(ar['fastest_total_ms']) : null,
   };
 
   return { runs, analytics };
@@ -121,7 +121,7 @@ export async function getAllPipelineRuns(): Promise<{
 export async function getPipelineRunById(id: string): Promise<PipelineRunRecord | null> {
   const db = getDb();
   const result = await db.execute({
-    sql:  'SELECT * FROM pipeline_runs WHERE id = ?',
+    sql: 'SELECT * FROM pipeline_runs WHERE id = ?',
     args: [id],
   });
   if (result.rows.length === 0) return null;

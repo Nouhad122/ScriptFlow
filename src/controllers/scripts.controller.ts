@@ -24,7 +24,11 @@ import { aiConfig } from '../config/ai.config';
 import { scriptAgentConfig } from '../config/script.config';
 import { env } from '../config/env';
 import { getIdeaById } from '../database/ideas.repository';
-import { saveScript, getScriptByIdeaId, getAllScripts as dbGetAllScripts } from '../database/scripts.repository';
+import {
+  saveScript,
+  getScriptByIdeaId,
+  getAllScripts as dbGetAllScripts,
+} from '../database/scripts.repository';
 import { getReviewByScriptId } from '../database/quality.repository';
 import { getMemoryWriteService } from '../memory';
 import type { ClientContext } from '../types';

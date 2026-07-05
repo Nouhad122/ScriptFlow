@@ -174,7 +174,9 @@ async function runTests(): Promise<void> {
 
   await test('script generated successfully (Step 1 prerequisite)', async () => {
     if (!scriptResult.success) {
-      throw new Error(`ScriptAgent failed: ${(scriptResult as { success: false; error: string }).error}`);
+      throw new Error(
+        `ScriptAgent failed: ${(scriptResult as { success: false; error: string }).error}`
+      );
     }
   });
 
@@ -203,7 +205,9 @@ async function runTests(): Promise<void> {
   // Test 2: Agent returned success
   await test('quality review returns success: true', async () => {
     if (!reviewResult.success) {
-      throw new Error(`QualityReviewAgent failed: ${(reviewResult as { success: false; error: string }).error}`);
+      throw new Error(
+        `QualityReviewAgent failed: ${(reviewResult as { success: false; error: string }).error}`
+      );
     }
   });
 
@@ -217,8 +221,16 @@ async function runTests(): Promise<void> {
   // Test 3: All 10 checks present
   await test('all 10 checks are present in the response', () => {
     const required = [
-      'hookStrength', 'problemClarity', 'storyFlow', 'solutionAlignment',
-      'proofAccuracy', 'ctaAlignment', 'brandVoice', 'fabrication', 'length', 'structure',
+      'hookStrength',
+      'problemClarity',
+      'storyFlow',
+      'solutionAlignment',
+      'proofAccuracy',
+      'ctaAlignment',
+      'brandVoice',
+      'fabrication',
+      'length',
+      'structure',
     ];
     for (const key of required) {
       if (!(key in review.checks)) throw new Error(`Missing check: "${key}"`);
@@ -227,7 +239,15 @@ async function runTests(): Promise<void> {
 
   // Test 4: Scored checks have valid scores
   await test('scored checks have integer scores 1–10', () => {
-    const scored = ['hookStrength', 'problemClarity', 'storyFlow', 'solutionAlignment', 'proofAccuracy', 'ctaAlignment', 'brandVoice'] as const;
+    const scored = [
+      'hookStrength',
+      'problemClarity',
+      'storyFlow',
+      'solutionAlignment',
+      'proofAccuracy',
+      'ctaAlignment',
+      'brandVoice',
+    ] as const;
     for (const key of scored) {
       const check = review.checks[key];
       if (!Number.isInteger(check.score) || check.score < 1 || check.score > 10) {
@@ -255,7 +275,11 @@ async function runTests(): Promise<void> {
 
   // Test 7: overallScore is 0–100
   await test('overallScore is an integer 0–100', () => {
-    if (!Number.isInteger(review.overallScore) || review.overallScore < 0 || review.overallScore > 100) {
+    if (
+      !Number.isInteger(review.overallScore) ||
+      review.overallScore < 0 ||
+      review.overallScore > 100
+    ) {
       throw new Error(`overallScore=${review.overallScore} is not an integer 0–100`);
     }
   });
@@ -285,7 +309,9 @@ async function runTests(): Promise<void> {
     const fromDb = await getReviewByScriptId(script.id);
     if (!fromDb) throw new Error(`getReviewByScriptId returned null for script "${script.id}"`);
     if (fromDb.overallDecision !== review.overallDecision) {
-      throw new Error(`DB decision "${fromDb.overallDecision}" != generated "${review.overallDecision}"`);
+      throw new Error(
+        `DB decision "${fromDb.overallDecision}" != generated "${review.overallDecision}"`
+      );
     }
   });
 
@@ -304,7 +330,9 @@ async function runTests(): Promise<void> {
     const expectedStatus = review.overallDecision === 'PASS' ? 'passed' : 'held';
     const actualStatus = newStatus;
     if (actualStatus !== expectedStatus) {
-      throw new Error(`Status="${actualStatus}" should be "${expectedStatus}" for decision "${review.overallDecision}"`);
+      throw new Error(
+        `Status="${actualStatus}" should be "${expectedStatus}" for decision "${review.overallDecision}"`
+      );
     }
   });
 
@@ -318,7 +346,15 @@ async function runTests(): Promise<void> {
   console.log(`  durationMs      : ${reviewResult.durationMs}ms\n`);
 
   console.log('  Check results:');
-  const scored = ['hookStrength', 'problemClarity', 'storyFlow', 'solutionAlignment', 'proofAccuracy', 'ctaAlignment', 'brandVoice'] as const;
+  const scored = [
+    'hookStrength',
+    'problemClarity',
+    'storyFlow',
+    'solutionAlignment',
+    'proofAccuracy',
+    'ctaAlignment',
+    'brandVoice',
+  ] as const;
   for (const key of scored) {
     const c = review.checks[key];
     console.log(`    ${c.pass ? PASS : FAIL} ${key.padEnd(20)} ${c.score}/10`);

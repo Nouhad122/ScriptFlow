@@ -20,8 +20,7 @@
  *
  * WHY THIS AGENT DOESN'T KNOW WHICH AI PROVIDER IS BEING USED:
  *   The agent depends on AIService, not on any specific SDK. If the provider
- *   changes from Gemini to OpenAI or Anthropic, this file stays identical.
- *   Only AIService and its configuration change.
+ *   changes, this file stays identical. Only AIService and its configuration change.
  */
 
 import { randomUUID } from 'crypto';
@@ -48,10 +47,23 @@ interface RawIdeaFromAI {
   targetPain: string;
 }
 
-const VALID_CREATIVE_TYPES = new Set(['talking-head', 'ugc', 'listicle', 'story', 'demo', 'testimonial']);
+const VALID_CREATIVE_TYPES = new Set([
+  'talking-head',
+  'ugc',
+  'listicle',
+  'story',
+  'demo',
+  'testimonial',
+]);
 const VALID_LEAD_TYPES = new Set(['problem-led', 'proof-led', 'curiosity-led', 'offer-led']);
 const REQUIRED_FIELDS: Array<keyof RawIdeaFromAI> = [
-  'concept', 'creativeType', 'angle', 'leadType', 'supportingProof', 'targetAvatar', 'targetPain',
+  'concept',
+  'creativeType',
+  'angle',
+  'leadType',
+  'supportingProof',
+  'targetAvatar',
+  'targetPain',
 ];
 
 // ---------------------------------------------------------------------------
@@ -60,9 +72,7 @@ const REQUIRED_FIELDS: Array<keyof RawIdeaFromAI> = [
 
 function validateRawIdeas(raw: unknown): RawIdeaFromAI[] {
   if (!Array.isArray(raw)) {
-    throw new Error(
-      `Expected a JSON array from the AI provider but received: ${typeof raw}`
-    );
+    throw new Error(`Expected a JSON array from the AI provider but received: ${typeof raw}`);
   }
   if (raw.length === 0) {
     throw new Error('AI provider returned an empty ideas array');
@@ -74,9 +84,7 @@ function validateRawIdeas(raw: unknown): RawIdeaFromAI[] {
     for (const field of REQUIRED_FIELDS) {
       const value = item[field];
       if (!value || typeof value !== 'string' || value.trim() === '') {
-        throw new Error(
-          `Idea at index ${i} is missing or has an empty required field: "${field}"`
-        );
+        throw new Error(`Idea at index ${i} is missing or has an empty required field: "${field}"`);
       }
     }
 
@@ -101,9 +109,7 @@ function validateRawIdeas(raw: unknown): RawIdeaFromAI[] {
     const idea = raw[i] as RawIdeaFromAI;
     const normalised = idea.concept.toLowerCase().trim();
     if (seen.has(normalised)) {
-      throw new Error(
-        `Duplicate concept detected at index ${i}: "${idea.concept}"`
-      );
+      throw new Error(`Duplicate concept detected at index ${i}: "${idea.concept}"`);
     }
     seen.add(normalised);
   }

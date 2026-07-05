@@ -14,7 +14,7 @@ export class OpenRouterEmbeddingProvider implements IEmbeddingProvider {
     if (!apiKey?.trim()) {
       throw new EmbeddingProviderError(
         'OPENROUTER_API_KEY is missing or empty. Add it to .env: OPENROUTER_API_KEY=sk-or-...',
-        PROVIDER_NAME,
+        PROVIDER_NAME
       );
     }
     this.client = new OpenAI({
@@ -43,8 +43,7 @@ export class OpenRouterEmbeddingProvider implements IEmbeddingProvider {
       });
     } catch (err) {
       const message =
-        err instanceof APIError ? err.message :
-        err instanceof Error ? err.message : String(err);
+        err instanceof APIError ? err.message : err instanceof Error ? err.message : String(err);
       throw new EmbeddingProviderError(message, PROVIDER_NAME);
     }
 
@@ -55,16 +54,13 @@ export class OpenRouterEmbeddingProvider implements IEmbeddingProvider {
     if (data.length !== texts.length) {
       throw new EmbeddingProviderError(
         `Expected ${texts.length} embeddings, received ${data.length}`,
-        PROVIDER_NAME,
+        PROVIDER_NAME
       );
     }
 
     return data.map((item, i) => {
       if (!item.embedding || item.embedding.length === 0) {
-        throw new EmbeddingProviderError(
-          `Missing embedding vector at index ${i}`,
-          PROVIDER_NAME,
-        );
+        throw new EmbeddingProviderError(`Missing embedding vector at index ${i}`, PROVIDER_NAME);
       }
       return item.embedding;
     });

@@ -93,7 +93,7 @@ const approvedIdea: Idea = {
   id: randomUUID(),
   clientId: testContext.id,
   pipelineRunId: runId,
-  hookLine: 'You\'re underpaid and you already know it — here\'s what to do about it',
+  hookLine: "You're underpaid and you already know it — here's what to do about it",
   creativeType: 'talking-head',
   angle: 'proof of income replacement in 90 days',
   leadType: 'problem-led',
@@ -102,7 +102,7 @@ const approvedIdea: Idea = {
   targetPain: 'Underpaid for skills with no path to change it',
   iceScore: {
     impact: 9,
-    impactReason: 'Directly targets the avatar\'s core pain of being underpaid',
+    impactReason: "Directly targets the avatar's core pain of being underpaid",
     confidence: 8,
     confidenceReason: 'Proof bank supports the 90-day income replacement claim',
     ease: 8,
@@ -120,7 +120,7 @@ const pendingIdea: Idea = {
   id: randomUUID(),
   clientId: testContext.id,
   pipelineRunId: runId,
-  hookLine: 'Still trading time for money? There\'s a better way',
+  hookLine: "Still trading time for money? There's a better way",
   creativeType: 'talking-head',
   angle: 'time freedom through online business',
   leadType: 'problem-led',
@@ -187,7 +187,9 @@ async function runTests(): Promise<void> {
   console.log('\n=== ScriptFlow — Script Agent Integration Test ===\n');
   console.log(`  Model    : ${aiConfig.model}`);
   console.log(`  Temp     : ${scriptAgentConfig.temperature}`);
-  console.log(`  Key      : ${env.openrouterApiKey ? `${env.openrouterApiKey.slice(0, 10)}...` : 'NOT SET'}`);
+  console.log(
+    `  Key      : ${env.openrouterApiKey ? `${env.openrouterApiKey.slice(0, 10)}...` : 'NOT SET'}`
+  );
   console.log(`  Note     : One AI call (approved idea only). Pending/rejected tests use no AI.\n`);
 
   await runMigrations();
@@ -262,7 +264,13 @@ async function runTests(): Promise<void> {
 
   // ── Test 5: All body sections are non-empty ─────────────────────────────────
 
-  const bodySections: (keyof typeof script.body)[] = ['problem', 'story', 'solution', 'proof', 'cta'];
+  const bodySections: (keyof typeof script.body)[] = [
+    'problem',
+    'story',
+    'solution',
+    'proof',
+    'cta',
+  ];
   for (const section of bodySections) {
     await test(`body.${section} is a non-empty string`, () => {
       const value = script.body[section];
@@ -280,7 +288,9 @@ async function runTests(): Promise<void> {
 
   await test('script.clientId matches the input idea clientId', () => {
     if (script.clientId !== approvedIdea.clientId) {
-      throw new Error(`script.clientId="${script.clientId}" != idea.clientId="${approvedIdea.clientId}"`);
+      throw new Error(
+        `script.clientId="${script.clientId}" != idea.clientId="${approvedIdea.clientId}"`
+      );
     }
   });
 

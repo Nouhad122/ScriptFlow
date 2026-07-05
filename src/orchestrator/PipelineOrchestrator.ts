@@ -132,10 +132,10 @@ export class PipelineOrchestrator {
     const pipelineStart = Date.now();
 
     // Hoisted so every exit branch can read the timings recorded so far.
-    let memorySearchMs  = 0;
+    let memorySearchMs = 0;
     let ideaGenerationMs = 0;
-    let iceScoringMs     = 0;
-    let persistenceMs    = 0;
+    let iceScoringMs = 0;
+    let persistenceMs = 0;
 
     this.log(pipelineRunId, 'Pipeline started');
 
@@ -153,13 +153,13 @@ export class PipelineOrchestrator {
         this.log(
           pipelineRunId,
           `MemorySearch completed — ${memoryMatches.length} match${memoryMatches.length === 1 ? '' : 'es'} found`,
-          memorySearchMs,
+          memorySearchMs
         );
       } catch (err) {
         memorySearchMs = Date.now() - memSearchStart;
         console.error(
           `[Pipeline ${pipelineRunId}] Memory search failed:`,
-          err instanceof Error ? err.message : String(err),
+          err instanceof Error ? err.message : String(err)
         );
         this.log(pipelineRunId, 'MemorySearch failed — continuing without context', memorySearchMs);
       }
@@ -176,14 +176,28 @@ export class PipelineOrchestrator {
     if (!ideasResult.success) {
       this.log(pipelineRunId, 'IdeaGeneration failed', ideaGenerationMs);
       await this.persistRun({
-        id: pipelineRunId, clientId: clientContext.id, status: 'failed',
-        totalIdeas: 0, approvedCandidates: 0, considerCandidates: 0, rejectedCandidates: 0,
-        ideaGenerationMs, iceScoringMs, persistenceMs,
+        id: pipelineRunId,
+        clientId: clientContext.id,
+        status: 'failed',
+        totalIdeas: 0,
+        approvedCandidates: 0,
+        considerCandidates: 0,
+        rejectedCandidates: 0,
+        ideaGenerationMs,
+        iceScoringMs,
+        persistenceMs,
         totalMs: Date.now() - pipelineStart,
-        failedStage: 'IdeaGeneration', errorMessage: ideasResult.error,
-        startedAt: new Date(pipelineStart), completedAt: new Date(),
+        failedStage: 'IdeaGeneration',
+        errorMessage: ideasResult.error,
+        startedAt: new Date(pipelineStart),
+        completedAt: new Date(),
       });
-      return { success: false, pipelineRunId, failedStage: 'IdeaGeneration', error: ideasResult.error };
+      return {
+        success: false,
+        pipelineRunId,
+        failedStage: 'IdeaGeneration',
+        error: ideasResult.error,
+      };
     }
 
     this.log(pipelineRunId, 'IdeaGeneration completed', ideaGenerationMs);
@@ -203,12 +217,21 @@ export class PipelineOrchestrator {
     if (!scoreResult.success) {
       this.log(pipelineRunId, 'IceScoring failed', iceScoringMs);
       await this.persistRun({
-        id: pipelineRunId, clientId: clientContext.id, status: 'failed',
-        totalIdeas: ideas.length, approvedCandidates: 0, considerCandidates: 0, rejectedCandidates: 0,
-        ideaGenerationMs, iceScoringMs, persistenceMs,
+        id: pipelineRunId,
+        clientId: clientContext.id,
+        status: 'failed',
+        totalIdeas: ideas.length,
+        approvedCandidates: 0,
+        considerCandidates: 0,
+        rejectedCandidates: 0,
+        ideaGenerationMs,
+        iceScoringMs,
+        persistenceMs,
         totalMs: Date.now() - pipelineStart,
-        failedStage: 'IceScoring', errorMessage: scoreResult.error,
-        startedAt: new Date(pipelineStart), completedAt: new Date(),
+        failedStage: 'IceScoring',
+        errorMessage: scoreResult.error,
+        startedAt: new Date(pipelineStart),
+        completedAt: new Date(),
       });
       return { success: false, pipelineRunId, failedStage: 'IceScoring', error: scoreResult.error };
     }
@@ -229,15 +252,24 @@ export class PipelineOrchestrator {
       this.log(pipelineRunId, 'Persistence failed', persistenceMs);
       const errMsg = error instanceof Error ? error.message : 'Unknown persistence error';
       await this.persistRun({
-        id: pipelineRunId, clientId: clientContext.id, status: 'failed',
+        id: pipelineRunId,
+        clientId: clientContext.id,
+        status: 'failed',
         totalIdeas: scoredIdeas.length,
-        approvedCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'APPROVE').length,
-        considerCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'CONSIDER').length,
-        rejectedCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'REJECT').length,
-        ideaGenerationMs, iceScoringMs, persistenceMs,
+        approvedCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'APPROVE')
+          .length,
+        considerCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'CONSIDER')
+          .length,
+        rejectedCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'REJECT')
+          .length,
+        ideaGenerationMs,
+        iceScoringMs,
+        persistenceMs,
         totalMs: Date.now() - pipelineStart,
-        failedStage: 'Persistence', errorMessage: errMsg,
-        startedAt: new Date(pipelineStart), completedAt: new Date(),
+        failedStage: 'Persistence',
+        errorMessage: errMsg,
+        startedAt: new Date(pipelineStart),
+        completedAt: new Date(),
       });
       return { success: false, pipelineRunId, failedStage: 'Persistence', error: errMsg };
     }
@@ -251,23 +283,38 @@ export class PipelineOrchestrator {
     // ── Summary ───────────────────────────────────────────────────────────────
 
     const summary: PipelineSummary = {
-      totalIdeas:         scoredIdeas.length,
-      approvedCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'APPROVE').length,
-      considerCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'CONSIDER').length,
+      totalIdeas: scoredIdeas.length,
+      approvedCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'APPROVE')
+        .length,
+      considerCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'CONSIDER')
+        .length,
       rejectedCandidates: scoredIdeas.filter((i) => i.iceScore?.recommendation === 'REJECT').length,
     };
 
-    const timings: PipelineTimings = { memorySearchMs, ideaGenerationMs, iceScoringMs, persistenceMs, totalMs };
+    const timings: PipelineTimings = {
+      memorySearchMs,
+      ideaGenerationMs,
+      iceScoringMs,
+      persistenceMs,
+      totalMs,
+    };
 
     await this.persistRun({
-      id: pipelineRunId, clientId: clientContext.id, status: 'completed',
-      totalIdeas:         summary.totalIdeas,
+      id: pipelineRunId,
+      clientId: clientContext.id,
+      status: 'completed',
+      totalIdeas: summary.totalIdeas,
       approvedCandidates: summary.approvedCandidates,
       considerCandidates: summary.considerCandidates,
       rejectedCandidates: summary.rejectedCandidates,
-      ideaGenerationMs, iceScoringMs, persistenceMs, totalMs,
-      failedStage: null, errorMessage: null,
-      startedAt: new Date(pipelineStart), completedAt: new Date(),
+      ideaGenerationMs,
+      iceScoringMs,
+      persistenceMs,
+      totalMs,
+      failedStage: null,
+      errorMessage: null,
+      startedAt: new Date(pipelineStart),
+      completedAt: new Date(),
     });
 
     return {

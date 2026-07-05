@@ -81,9 +81,7 @@ export class MemoryRepository {
   }
 
   async getAllEntries(): Promise<MemoryEntry[]> {
-    const result = await this.db.execute(
-      'SELECT * FROM memory_entries ORDER BY created_at DESC',
-    );
+    const result = await this.db.execute('SELECT * FROM memory_entries ORDER BY created_at DESC');
     return result.rows.map(rowToEntry);
   }
 

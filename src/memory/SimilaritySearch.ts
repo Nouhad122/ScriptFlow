@@ -33,7 +33,7 @@
  *   2. Rewrite findMostSimilar() to call the vector DB's query API.
  *   3. MemoryRepository retains the relational metadata (text, clientId, etc.)
  *      and resolves full MemoryEntry objects by ID after the vector DB returns IDs.
- *   No changes to EmbeddingService, VoyageEmbeddingProvider, or the Memory Agent.
+ *   No changes to EmbeddingService, OpenRouterEmbeddingProvider, or the Memory Agent.
  */
 
 import type { MemoryEntry, SimilarityResult } from './types';
@@ -79,7 +79,7 @@ export class SimilaritySearch {
   findMostSimilar(
     queryEmbedding: number[],
     candidates: MemoryEntry[],
-    topK: number,
+    topK: number
   ): SimilarityResult[] {
     if (candidates.length === 0 || topK <= 0) return [];
 

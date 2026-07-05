@@ -11,13 +11,7 @@
  */
 
 export type CreativeType =
-  | 'talking-head'
-  | 'ugc'
-  | 'listicle'
-  | 'story'
-  | 'demo'
-  | 'testimonial'
-  | 'other';
+  'talking-head' | 'ugc' | 'listicle' | 'story' | 'demo' | 'testimonial' | 'other';
 
 export type LeadType = 'problem-led' | 'proof-led' | 'curiosity-led' | 'offer-led';
 

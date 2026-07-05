@@ -10,7 +10,7 @@
  *   An embedding is only as good as the text fed to it. Which fields to include,
  *   in what order, and with what labels is a design decision separate from the API
  *   call. EmbeddingService owns that strategy so it can be tuned independently of
- *   VoyageEmbeddingProvider. For example, we might later weight the hook line more
+ *   OpenRouterEmbeddingProvider. For example, we might later weight the hook line more
  *   heavily by repeating it, or drop production_notes because they add noise.
  *
  * FIELD SELECTION RATIONALE:

@@ -32,6 +32,6 @@ export interface MemorySearchConfig {
 }
 
 export const memorySearchConfig: MemorySearchConfig = {
-  threshold: 0.60,
+  threshold: 0.6,
   topK: 5,
 };

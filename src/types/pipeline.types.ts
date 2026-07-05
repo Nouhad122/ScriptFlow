@@ -32,11 +32,7 @@ export type AgentResult<T> =
  * PipelineRunStatus tracks the state of a full pipeline execution from trigger to delivery.
  */
 export type PipelineRunStatus =
-  | 'running'
-  | 'awaiting_approval'
-  | 'processing_script'
-  | 'completed'
-  | 'failed';
+  'running' | 'awaiting_approval' | 'processing_script' | 'completed' | 'failed';
 
 /**
  * PipelineSummary is the per-run breakdown of ICE recommendations.

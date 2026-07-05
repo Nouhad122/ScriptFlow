@@ -22,7 +22,10 @@ import { aiConfig } from '../config/ai.config';
 import { ideaAgentConfig } from '../config/idea.config';
 import { iceAgentConfig } from '../config/ice.config';
 import { env } from '../config/env';
-import { getAllPipelineRuns, getPipelineRunById as dbGetPipelineRunById } from '../database/pipeline.repository';
+import {
+  getAllPipelineRuns,
+  getPipelineRunById as dbGetPipelineRunById,
+} from '../database/pipeline.repository';
 import { getMemorySearchService } from '../memory';
 import type { ClientContext } from '../types';
 
@@ -37,7 +40,8 @@ export async function getPipelineHistory(_req: Request, res: Response): Promise<
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Database error while fetching pipeline history',
+      error:
+        error instanceof Error ? error.message : 'Database error while fetching pipeline history',
     });
   }
 }
@@ -95,7 +99,7 @@ export async function runPipeline(req: Request, res: Response): Promise<void> {
   const orchestrator = new PipelineOrchestrator(
     new IdeaAgent(ideaAI),
     new IceScoringAgent(iceAI),
-    getMemorySearchService() ?? undefined,
+    getMemorySearchService() ?? undefined
   );
 
   try {

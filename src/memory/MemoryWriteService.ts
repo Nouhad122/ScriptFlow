@@ -74,7 +74,7 @@ function composeScriptText(script: Script): string {
 export class MemoryWriteService {
   constructor(
     private readonly embeddingService: EmbeddingService,
-    private readonly repository: MemoryRepository,
+    private readonly repository: MemoryRepository
   ) {}
 
   /**
@@ -99,7 +99,7 @@ export class MemoryWriteService {
       console.error(
         '[Memory] Failed to store approved idea %s:',
         idea.id,
-        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.message : String(err)
       );
     }
   }
@@ -128,7 +128,7 @@ export class MemoryWriteService {
       console.error(
         '[Memory] Failed to store generated script %s:',
         script.id,
-        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.message : String(err)
       );
     }
   }
@@ -148,7 +148,7 @@ export function createMemoryWriteService(openrouterApiKey: string): MemoryWriteS
   if (!key) {
     console.warn(
       '[Memory] OPENROUTER_API_KEY is not set — memory writes are disabled. ' +
-        'Semantic memory will not be populated until the key is added to .env.',
+        'Semantic memory will not be populated until the key is added to .env.'
     );
     return null;
   }
@@ -160,7 +160,7 @@ export function createMemoryWriteService(openrouterApiKey: string): MemoryWriteS
   } catch (err) {
     console.warn(
       '[Memory] Failed to initialise MemoryWriteService:',
-      err instanceof Error ? err.message : String(err),
+      err instanceof Error ? err.message : String(err)
     );
     return null;
   }

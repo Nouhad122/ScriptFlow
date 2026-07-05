@@ -33,7 +33,7 @@ export type QualityDecision = 'PASS' | 'HOLD';
 
 export interface QualityScoreCheck {
   pass: boolean;
-  score: number;   // 1–10
+  score: number; // 1–10
   reason: string;
 }
 
@@ -61,7 +61,7 @@ export interface QualityReview {
   ideaId: string;
   pipelineRunId: string;
   overallDecision: QualityDecision;
-  overallScore: number;   // 0–100, AI-computed holistic score
+  overallScore: number; // 0–100, AI-computed holistic score
   checks: QualityChecks;
   createdAt: Date;
 }

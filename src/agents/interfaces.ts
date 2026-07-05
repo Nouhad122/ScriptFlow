@@ -9,13 +9,7 @@
  * principle defined in the project plan.
  */
 
-import type {
-  AgentResult,
-  ClientContext,
-  Idea,
-  QualityReview,
-  Script,
-} from '../types';
+import type { AgentResult, ClientContext, Idea, QualityReview, Script } from '../types';
 import type { MemoryMatch } from '../memory';
 
 /**

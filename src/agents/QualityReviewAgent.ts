@@ -137,16 +137,16 @@ function validateBooleanCheck(raw: RawBooleanCheck | undefined, name: string): Q
 
 function validateAndMapChecks(raw: RawChecks): QualityChecks {
   return {
-    hookStrength:      validateScoreCheck(raw.hookStrength, 'hookStrength'),
-    problemClarity:    validateScoreCheck(raw.problemClarity, 'problemClarity'),
-    storyFlow:         validateScoreCheck(raw.storyFlow, 'storyFlow'),
+    hookStrength: validateScoreCheck(raw.hookStrength, 'hookStrength'),
+    problemClarity: validateScoreCheck(raw.problemClarity, 'problemClarity'),
+    storyFlow: validateScoreCheck(raw.storyFlow, 'storyFlow'),
     solutionAlignment: validateScoreCheck(raw.solutionAlignment, 'solutionAlignment'),
-    proofAccuracy:     validateScoreCheck(raw.proofAccuracy, 'proofAccuracy'),
-    ctaAlignment:      validateScoreCheck(raw.ctaAlignment, 'ctaAlignment'),
-    brandVoice:        validateScoreCheck(raw.brandVoice, 'brandVoice'),
-    fabrication:       validateBooleanCheck(raw.fabrication, 'fabrication'),
-    length:            validateBooleanCheck(raw.length, 'length'),
-    structure:         validateBooleanCheck(raw.structure, 'structure'),
+    proofAccuracy: validateScoreCheck(raw.proofAccuracy, 'proofAccuracy'),
+    ctaAlignment: validateScoreCheck(raw.ctaAlignment, 'ctaAlignment'),
+    brandVoice: validateScoreCheck(raw.brandVoice, 'brandVoice'),
+    fabrication: validateBooleanCheck(raw.fabrication, 'fabrication'),
+    length: validateBooleanCheck(raw.length, 'length'),
+    structure: validateBooleanCheck(raw.structure, 'structure'),
   };
 }
 
@@ -205,7 +205,11 @@ export class QualityReviewAgent implements IQualityReviewAgent {
       }
 
       const overallScore = raw.overallScore;
-      if (!Number.isInteger(overallScore) || (overallScore as number) < 0 || (overallScore as number) > 100) {
+      if (
+        !Number.isInteger(overallScore) ||
+        (overallScore as number) < 0 ||
+        (overallScore as number) > 100
+      ) {
         throw new Error(
           `overallScore must be an integer between 0 and 100. Got: ${String(overallScore)}`
         );

@@ -72,9 +72,9 @@ describe('SimilaritySearch.findMostSimilar', () => {
   const search = new SimilaritySearch();
 
   const candidates = [
-    makeEntry('a', [1, 0, 0]),   // axis-aligned X
-    makeEntry('b', [0, 1, 0]),   // axis-aligned Y
-    makeEntry('c', [0, 0, 1]),   // axis-aligned Z
+    makeEntry('a', [1, 0, 0]), // axis-aligned X
+    makeEntry('b', [0, 1, 0]), // axis-aligned Y
+    makeEntry('c', [0, 0, 1]), // axis-aligned Z
     makeEntry('d', [0.6, 0.8, 0]), // 53° from X in XY-plane
   ];
 

@@ -67,9 +67,7 @@ export function buildScriptPrompt(
     `  Target Avatar:    ${idea.targetAvatar}\n` +
     `  Target Pain:      "${idea.targetPain}"\n` +
     `  Supporting Proof: ${(idea.supportingProofPoints ?? []).join(' | ')}` +
-    (idea.iceScore
-      ? `\n  ICE Reasoning:    "${idea.iceScore.overallReasoning}"`
-      : '');
+    (idea.iceScore ? `\n  ICE Reasoning:    "${idea.iceScore.overallReasoning}"` : '');
 
   return `You are a professional short-form video scriptwriter specialising in high-ticket coaching and online business content.
 Your task: write a production-ready script for the approved idea below.

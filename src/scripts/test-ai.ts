@@ -19,7 +19,9 @@ async function runTests(): Promise<void> {
   console.log('\n=== ScriptFlow — OpenRouter Connection Test ===\n');
   console.log(`Provider : OpenRouter`);
   console.log(`Model    : ${aiConfig.model}`);
-  console.log(`Key      : ${env.openrouterApiKey ? `${env.openrouterApiKey.slice(0, 10)}...` : 'NOT SET'}\n`);
+  console.log(
+    `Key      : ${env.openrouterApiKey ? `${env.openrouterApiKey.slice(0, 10)}...` : 'NOT SET'}\n`
+  );
 
   const service = new AIService(env.openrouterApiKey);
   let passed = 0;
@@ -41,7 +43,10 @@ async function runTests(): Promise<void> {
   // Test 2: generateStructured
   process.stdout.write('Test 2 — generateStructured<T> ........... ');
   try {
-    interface TestShape { status: string; value: number }
+    interface TestShape {
+      status: string;
+      value: number;
+    }
     const start = Date.now();
     const result = await service.generateStructured<TestShape>(
       'Return a JSON object with two fields: "status" set to "ok" and "value" set to 42.'

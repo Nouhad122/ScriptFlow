@@ -12,7 +12,7 @@ function makeEntry(overrides: Partial<MemoryEntry> = {}): MemoryEntry {
     clientId: 'client-alpha',
     pipelineRunId: 'run-1',
     text: 'Hook: Stop trading time for money\nAngle: freedom through systems',
-    embeddingModel: 'voyage-3-lite',
+    embeddingModel: 'openai/text-embedding-3-small',
     embedding: [0.1, 0.2, 0.3],
     createdAt: new Date('2025-01-15T10:00:00.000Z'),
     ...overrides,
@@ -67,7 +67,7 @@ describe('MemoryRepository', () => {
   it('round-trips all string fields', async () => {
     const entry = makeEntry({
       text: 'Hook: Fire your boss\nAngle: time freedom',
-      embeddingModel: 'voyage-3',
+      embeddingModel: 'openai/text-embedding-3-small',
       sourceId: 'source-xyz',
       clientId: 'client-beta',
       pipelineRunId: 'run-99',
@@ -75,7 +75,7 @@ describe('MemoryRepository', () => {
     await repo.saveEntry(entry);
     const [fetched] = await repo.getAllEntries();
     expect(fetched.text).toBe(entry.text);
-    expect(fetched.embeddingModel).toBe('voyage-3');
+    expect(fetched.embeddingModel).toBe('openai/text-embedding-3-small');
     expect(fetched.sourceId).toBe('source-xyz');
     expect(fetched.clientId).toBe('client-beta');
     expect(fetched.pipelineRunId).toBe('run-99');

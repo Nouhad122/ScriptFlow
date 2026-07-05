@@ -37,7 +37,7 @@ export interface MemoryMatch {
 export class EmbeddingProviderError extends Error {
   constructor(
     message: string,
-    readonly provider: string,
+    readonly provider: string
   ) {
     super(`[${provider}] Embedding failed: ${message}`);
     this.name = 'EmbeddingProviderError';

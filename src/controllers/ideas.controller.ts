@@ -12,7 +12,6 @@ import {
   getPendingIdeas as dbGetPendingIdeas,
   getApprovedIdeas as dbGetApprovedIdeas,
   updateIdeaApprovalStatus,
-  getIdeaById,
 } from '../database/ideas.repository';
 import { getMemoryWriteService } from '../memory';
 
@@ -206,7 +205,8 @@ export async function getApprovedIdeas(_req: Request, res: Response): Promise<vo
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Database error while fetching approved ideas',
+      error:
+        error instanceof Error ? error.message : 'Database error while fetching approved ideas',
     });
   }
 }
@@ -279,7 +279,8 @@ export async function approveIdea(req: Request, res: Response): Promise<void> {
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Database error while updating approval status',
+      error:
+        error instanceof Error ? error.message : 'Database error while updating approval status',
     });
   }
 }
