@@ -13,7 +13,6 @@ export const apiClient = axios.create({
 // Long-running AI endpoints — override the global timeout per-request.
 export const AI_TIMEOUT_MS = 300_000 // 5 minutes: covers two sequential AI calls
 
-// Request interceptor — reserved for auth headers when authentication is added
 apiClient.interceptors.request.use(
   (config) => config,
   (error: unknown) => Promise.reject(error),

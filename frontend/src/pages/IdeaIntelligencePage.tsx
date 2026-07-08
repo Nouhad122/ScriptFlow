@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usePagination } from '@/hooks/use-pagination'
+import { Pagination } from '@/components/ui/pagination'
 import {
   Lightbulb,
   Search,
@@ -9,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react'
+import { m, AnimatePresence } from 'motion/react'
 import { PageContainer } from '@/components/PageContainer'
 import { SectionHeader } from '@/components/SectionHeader'
 import { EmptyState } from '@/components/EmptyState'
@@ -32,11 +35,6 @@ import type { Idea, IceScore } from '@/types'
 
 type RecommendationFilter = 'ALL' | 'APPROVE' | 'CONSIDER' | 'REJECT'
 type SortKey = 'newest' | 'impact' | 'confidence' | 'ease'
-
-// Ideas returned by the backend always have iceScore populated (pipeline always
-// scores before saving), but the DB column is nullable. This type represents a
-// fully-scored idea — `Omit` drops the nullable version so the intersection
-// resolves cleanly to IceScore (not IceScore | null).
 type ScoredIdea = Omit<Idea, 'iceScore'> & { iceScore: IceScore }
 
 // ── Utility helpers ──────────────────────────────────────────────────────────
@@ -95,27 +93,14 @@ function RecommendationBadge({ rec }: { rec: 'APPROVE' | 'CONSIDER' | 'REJECT' }
   )
 }
 
-function ReasoningBlock({
-  label,
-  score,
-  reason,
-}: {
-  label: string
-  score: number
-  reason: string
-}) {
+function ReasoningBlock({ label, score, reason }: { label: string; score: number; reason: string }) {
   return (
     <div className="space-y-2 rounded-md border border-border bg-card/60 p-3">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
-        <span
-          className={cn(
-            'rounded border px-1.5 py-0.5 text-xs font-bold',
-            iceColor(score),
-          )}
-        >
+        <span className={cn('rounded border px-1.5 py-0.5 text-xs font-bold', iceColor(score))}>
           {score}/10
         </span>
       </div>
@@ -150,17 +135,17 @@ function IdeaCard({
   const ice: IceScore = idea.iceScore
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      {/* ── Collapsed view ─────────────────────────────────────────────── */}
+    <m.div
+      whileHover={{ y: -1, transition: { duration: 0.15 } }}
+      className="rounded-lg border border-border bg-card transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.1)] hover:border-border/60"
+    >
+      {/* Collapsed view */}
       <div className="p-4">
         <div className="flex items-start gap-4">
-          {/* Content */}
           <div className="min-w-0 flex-1 space-y-2.5">
             <p className="text-sm font-medium leading-snug text-foreground">
               {idea.hookLine}
             </p>
-
-            {/* Tag row */}
             <div className="flex flex-wrap items-center gap-1.5">
               <RecommendationBadge rec={ice.recommendation} />
               <span className="inline-flex items-center rounded-full border border-border bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
@@ -170,8 +155,6 @@ function IdeaCard({
                 {idea.leadType}
               </span>
             </div>
-
-            {/* Avatar + Pain */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span>
                 <span className="font-medium text-foreground/60">Avatar</span>{' '}
@@ -180,12 +163,10 @@ function IdeaCard({
               <span className="text-border">·</span>
               <span className="max-w-[320px] truncate">{idea.targetPain}</span>
             </div>
-
-            {/* ICE scores + meta */}
             <div className="flex flex-wrap items-center gap-2">
-              <IceScoreBadge label="Impact" score={ice.impact} />
+              <IceScoreBadge label="Impact"     score={ice.impact} />
               <IceScoreBadge label="Confidence" score={ice.confidence} />
-              <IceScoreBadge label="Ease" score={ice.ease} />
+              <IceScoreBadge label="Ease"       score={ice.ease} />
               {idea.supportingProofPoints.length > 0 && (
                 <span className="ml-1 text-[10px] text-muted-foreground/60">
                   {idea.supportingProofPoints.length} proof points
@@ -199,20 +180,10 @@ function IdeaCard({
 
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-2 self-start">
-            <Button
-              size="sm"
-              className="gap-1.5"
-              onClick={onApprove}
-              disabled={isAnyMutating}
-            >
-              {isApproving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )}
+            <Button size="sm" className="gap-1.5" onClick={onApprove} disabled={isAnyMutating}>
+              {isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
               Approve
             </Button>
-
             <Button
               size="sm"
               variant="outline"
@@ -220,14 +191,9 @@ function IdeaCard({
               onClick={onReject}
               disabled={isAnyMutating}
             >
-              {isRejecting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <X className="h-3.5 w-3.5" />
-              )}
+              {isRejecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
               Reject
             </Button>
-
             <Button
               size="icon"
               variant="ghost"
@@ -235,70 +201,66 @@ function IdeaCard({
               onClick={onToggleExpand}
             >
               <ChevronDown
-                className={cn(
-                  'h-4 w-4 transition-transform duration-200',
-                  expanded && 'rotate-180',
-                )}
+                className={cn('h-4 w-4 transition-transform duration-200', expanded && 'rotate-180')}
               />
             </Button>
           </div>
         </div>
       </div>
 
-      {/* ── Expanded view ──────────────────────────────────────────────── */}
-      {expanded && (
-        <div className="space-y-4 border-t border-border bg-muted/20 p-4">
-          {/* ICE reasoning */}
-          <div className="grid grid-cols-3 gap-3">
-            <ReasoningBlock label="Impact" score={ice.impact} reason={ice.impactReason} />
-            <ReasoningBlock label="Confidence" score={ice.confidence} reason={ice.confidenceReason} />
-            <ReasoningBlock label="Ease" score={ice.ease} reason={ice.easeReason} />
-          </div>
-
-          {/* Overall reasoning */}
-          <div className="rounded-md border border-border bg-card/50 p-3">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Overall reasoning
-            </p>
-            <p className="text-xs leading-relaxed text-foreground/80">
-              {ice.overallReasoning}
-            </p>
-          </div>
-
-          {/* Supporting proof */}
-          {idea.supportingProofPoints.length > 0 && (
-            <div>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Supporting proof
-              </p>
-              <ul className="space-y-1.5">
-                {idea.supportingProofPoints.map((point, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-foreground/75">
-                    <span className="mt-0.5 shrink-0 text-muted-foreground">·</span>
-                    <span>{point}</span>
-                  </li>
-                ))}
-              </ul>
+      {/* Expanded view */}
+      <AnimatePresence>
+        {expanded && (
+          <m.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="space-y-4 border-t border-border bg-muted/20 p-4"
+          >
+            <div className="grid grid-cols-3 gap-3">
+              <ReasoningBlock label="Impact"     score={ice.impact}     reason={ice.impactReason} />
+              <ReasoningBlock label="Confidence" score={ice.confidence} reason={ice.confidenceReason} />
+              <ReasoningBlock label="Ease"       score={ice.ease}       reason={ice.easeReason} />
             </div>
-          )}
-
-          {/* Footer meta */}
-          <div className="flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-            <span>
-              Pipeline{' '}
-              <span className="font-mono text-[11px] text-foreground/60">
-                {idea.pipelineRunId.slice(0, 12)}…
+            <div className="rounded-md border border-border bg-card/50 p-3">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Overall reasoning
+              </p>
+              <p className="text-xs leading-relaxed text-foreground/80">{ice.overallReasoning}</p>
+            </div>
+            {idea.supportingProofPoints.length > 0 && (
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Supporting proof
+                </p>
+                <ul className="space-y-1.5">
+                  {idea.supportingProofPoints.map((point, i) => (
+                    <li key={i} className="flex gap-2 text-xs text-foreground/75">
+                      <span className="mt-0.5 shrink-0 text-muted-foreground">·</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+              <span>
+                Pipeline{' '}
+                <span className="font-mono text-[11px] text-foreground/60">
+                  {idea.pipelineRunId.slice(0, 12)}…
+                </span>
               </span>
-            </span>
-            <span>{new Date(idea.createdAt).toLocaleString()}</span>
-          </div>
-        </div>
-      )}
-    </div>
+              <span>{new Date(idea.createdAt).toLocaleString()}</span>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </m.div>
   )
 }
 
-// ── Skeleton loading state ────────────────────────────────────────────────────
+// ── Skeleton / error ──────────────────────────────────────────────────────────
 
 function IdeaListSkeleton() {
   return (
@@ -332,21 +294,15 @@ function IdeaListSkeleton() {
   )
 }
 
-// ── Error state ───────────────────────────────────────────────────────────────
-
 function FetchError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border py-16">
       <AlertCircle className="h-8 w-8 text-muted-foreground" />
       <div className="space-y-1 text-center">
         <p className="text-sm font-medium text-foreground">Failed to load ideas</p>
-        <p className="text-xs text-muted-foreground">
-          There was a problem fetching pending ideas.
-        </p>
+        <p className="text-xs text-muted-foreground">There was a problem fetching pending ideas.</p>
       </div>
-      <Button variant="outline" size="sm" onClick={onRetry}>
-        Try again
-      </Button>
+      <Button variant="outline" size="sm" onClick={onRetry}>Try again</Button>
     </div>
   )
 }
@@ -357,15 +313,15 @@ export function IdeaIntelligencePage() {
   const navigate = useNavigate()
   const { data: ideas = [], isLoading, isError, refetch } = usePendingIdeas()
 
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<RecommendationFilter>('ALL')
-  const [sort, setSort] = useState<SortKey>('newest')
+  const [search, setSearch]           = useState('')
+  const [filter, setFilter]           = useState<RecommendationFilter>('ALL')
+  const [sort, setSort]               = useState<SortKey>('newest')
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set())
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   const approveMutation = useApproveIdea()
-  const rejectMutation = useRejectIdea()
-  const isAnyMutating = approveMutation.isPending || rejectMutation.isPending
+  const rejectMutation  = useRejectIdea()
+  const isAnyMutating   = approveMutation.isPending || rejectMutation.isPending
 
   const displayedIdeas = useMemo<ScoredIdea[]>(() => {
     let list: ScoredIdea[] = ideas.filter((i): i is ScoredIdea => i.iceScore !== null)
@@ -385,14 +341,19 @@ export function IdeaIntelligencePage() {
     }
 
     return [...list].sort((a, b) => {
-      if (sort === 'newest')
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      if (sort === 'impact') return b.iceScore.impact - a.iceScore.impact
+      if (sort === 'newest')     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      if (sort === 'impact')     return b.iceScore.impact - a.iceScore.impact
       if (sort === 'confidence') return b.iceScore.confidence - a.iceScore.confidence
-      if (sort === 'ease') return b.iceScore.ease - a.iceScore.ease
+      if (sort === 'ease')       return b.iceScore.ease - a.iceScore.ease
       return 0
     })
   }, [ideas, search, filter, sort])
+
+  // Only show ideas that haven't been dismissed yet
+  const visibleIdeas = useMemo(
+    () => displayedIdeas.filter((idea) => !dismissingIds.has(idea.id)),
+    [displayedIdeas, dismissingIds],
+  )
 
   const handleApprove = (id: string) => {
     approveMutation.mutate(id, {
@@ -415,17 +376,17 @@ export function IdeaIntelligencePage() {
     })
   }
 
-  const clearFilters = () => {
-    setSearch('')
-    setFilter('ALL')
-  }
-
+  const clearFilters = () => { setSearch(''); setFilter('ALL') }
   const isFiltered = search.trim() !== '' || filter !== 'ALL'
+
+  const PAGE_SIZE = 10
+  const { page, setPage, totalPages, pageItems } = usePagination(visibleIdeas, PAGE_SIZE)
+
+  useEffect(() => { setPage(1) }, [search, filter, sort, setPage])
 
   return (
     <PageContainer className="max-w-5xl">
       <div className="space-y-6">
-        {/* Header */}
         <SectionHeader
           title="Idea Intelligence"
           description="Review and approve AI-generated content ideas before script generation."
@@ -438,26 +399,18 @@ export function IdeaIntelligencePage() {
           }
         />
 
-        {/* Loading */}
         {isLoading && <IdeaListSkeleton />}
+        {isError   && <FetchError onRetry={() => void refetch()} />}
 
-        {/* Error */}
-        {isError && <FetchError onRetry={() => void refetch()} />}
-
-        {/* Empty — no ideas at all */}
         {!isLoading && !isError && ideas.length === 0 && (
           <EmptyState
             icon={Lightbulb}
             title="No pending ideas"
             description="Run a new pipeline to generate content."
-            action={{
-              label: 'Go to Automation',
-              onClick: () => navigate('/automation'),
-            }}
+            action={{ label: 'Go to Automation', onClick: () => navigate('/automation') }}
           />
         )}
 
-        {/* Content — has ideas */}
         {!isLoading && !isError && ideas.length > 0 && (
           <div className="space-y-4">
             {/* Toolbar */}
@@ -471,11 +424,7 @@ export function IdeaIntelligencePage() {
                   className="pl-9"
                 />
               </div>
-
-              <Select
-                value={filter}
-                onValueChange={(v) => setFilter(v as RecommendationFilter)}
-              >
+              <Select value={filter} onValueChange={(v) => setFilter(v as RecommendationFilter)}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Recommendation" />
                 </SelectTrigger>
@@ -486,11 +435,7 @@ export function IdeaIntelligencePage() {
                   <SelectItem value="REJECT">Reject</SelectItem>
                 </SelectContent>
               </Select>
-
-              <Select
-                value={sort}
-                onValueChange={(v) => setSort(v as SortKey)}
-              >
+              <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -503,7 +448,6 @@ export function IdeaIntelligencePage() {
               </Select>
             </div>
 
-            {/* Results count */}
             {isFiltered && (
               <p className="text-xs text-muted-foreground">
                 {displayedIdeas.length} of {ideas.length} ideas
@@ -512,40 +456,29 @@ export function IdeaIntelligencePage() {
                     · {REC_CONFIG[filter as Exclude<RecommendationFilter, 'ALL'>]?.label ?? filter}
                   </span>
                 )}
-                {search.trim() && (
-                  <span>
-                    {' '}
-                    matching &ldquo;{search.trim()}&rdquo;
-                  </span>
-                )}
-                <button
-                  className="ml-2 text-primary hover:underline"
-                  onClick={clearFilters}
-                >
+                {search.trim() && <span> matching &ldquo;{search.trim()}&rdquo;</span>}
+                <button className="ml-2 text-primary hover:underline" onClick={clearFilters}>
                   Clear
                 </button>
               </p>
             )}
 
-            {/* Empty — no filter results */}
-            {displayedIdeas.length === 0 ? (
+            {visibleIdeas.length === 0 && displayedIdeas.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-12 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No ideas match your filters.
-                </p>
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  Clear filters
-                </Button>
+                <p className="text-sm text-muted-foreground">No ideas match your filters.</p>
+                <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {displayedIdeas.map((idea) => (
-                  <div
+              /* AnimatePresence handles exit of dismissed cards */
+              <AnimatePresence initial={false} mode="sync">
+                {pageItems.map((idea) => (
+                  <m.div
                     key={idea.id}
-                    className={cn(
-                      'transition-opacity duration-200',
-                      dismissingIds.has(idea.id) ? 'opacity-0' : 'opacity-100',
-                    )}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6, transition: { duration: 0.2, ease: 'easeIn' } }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                    className="mb-3 last:mb-0"
                   >
                     <IdeaCard
                       idea={idea}
@@ -553,20 +486,21 @@ export function IdeaIntelligencePage() {
                       onToggleExpand={() => toggleExpanded(idea.id)}
                       onApprove={() => handleApprove(idea.id)}
                       onReject={() => handleReject(idea.id)}
-                      isApproving={
-                        approveMutation.isPending &&
-                        approveMutation.variables === idea.id
-                      }
-                      isRejecting={
-                        rejectMutation.isPending &&
-                        rejectMutation.variables === idea.id
-                      }
+                      isApproving={approveMutation.isPending && approveMutation.variables === idea.id}
+                      isRejecting={rejectMutation.isPending && rejectMutation.variables === idea.id}
                       isAnyMutating={isAnyMutating}
                     />
-                  </div>
+                  </m.div>
                 ))}
-              </div>
+              </AnimatePresence>
             )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={visibleIdeas.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

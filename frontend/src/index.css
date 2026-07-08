@@ -108,6 +108,13 @@
   box-sizing: border-box;
 }
 
+@layer base {
+  button,
+  a {
+    cursor: pointer;
+  }
+}
+
 html {
   height: 100%;
 }
@@ -125,6 +132,36 @@ body {
 
 #root {
   height: 100%;
+}
+
+/* ── Shimmer skeleton ─────────────────────────────────────────────────────── */
+:root {
+  --shimmer-base: #f0f0f1;
+  --shimmer-peak: #ffffff;
+}
+.dark {
+  --shimmer-base: #1a1a1a;
+  --shimmer-peak: #2c2c2c;
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-base) 25%,
+    var(--shimmer-peak) 50%,
+    var(--shimmer-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer {
+    animation: none;
+    background: var(--shimmer-base);
+  }
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */

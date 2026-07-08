@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usePagination } from '@/hooks/use-pagination'
+import { Pagination } from '@/components/ui/pagination'
 import {
   Search,
   Copy,
+  Check,
   Loader2,
   FileText,
   Sparkles,
@@ -14,12 +17,15 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { m, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
+import { containerVariants, itemVariants } from '@/lib/animations'
 import { useApprovedIdeas } from '@/hooks/use-approved-ideas'
+import { useScripts } from '@/hooks/use-scripts'
 import { useScriptForIdea } from '@/hooks/use-script-for-idea'
 import { useGenerateScript } from '@/hooks/use-generate-script'
 import { MOCK_CLIENTS } from '@/data/mock-clients'
@@ -37,13 +43,6 @@ function relativeTime(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-function copy(text: string, label: string) {
-  navigator.clipboard.writeText(text).then(
-    () => toast.success(`${label} copied.`),
-    () => toast.error('Copy failed.'),
-  )
-}
-
 function buildScriptText(script: Script): string {
   return [
     '=== Hook Variations ===',
@@ -51,21 +50,112 @@ function buildScriptText(script: Script): string {
     `Hook 2: ${script.hook2}`,
     `Hook 3: ${script.hook3}`,
     '',
-    '=== Problem ===',
-    script.body.problem,
+    '=== Problem ===',   script.body.problem,
     '',
-    '=== Story ===',
-    script.body.story,
+    '=== Story ===',     script.body.story,
     '',
-    '=== Solution ===',
-    script.body.solution,
+    '=== Solution ===',  script.body.solution,
     '',
-    '=== Proof ===',
-    script.body.proof,
+    '=== Proof ===',     script.body.proof,
     '',
-    '=== Call to Action ===',
-    script.body.cta,
+    '=== Call to Action ===', script.body.cta,
   ].join('\n')
+}
+
+// ── Copy button with "✓ Copied" inline feedback ───────────────────────────────
+
+interface CopyButtonProps {
+  text: string
+  label: string
+  size?: 'icon' | 'sm'
+  className?: string
+}
+
+function CopyButton({ text, label, size = 'icon', className }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(
+      () => {
+        toast.success(`${label} copied.`)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      },
+      () => toast.error('Copy failed.'),
+    )
+  }
+
+  if (size === 'sm') {
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        className={cn('h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground min-w-20', className)}
+        onClick={handleCopy}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {copied ? (
+            <m.span
+              key="copied"
+              className="flex items-center gap-1.5"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <Check className="h-3 w-3 text-green-400" />
+              <span className="text-green-400">Copied</span>
+            </m.span>
+          ) : (
+            <m.span
+              key="copy"
+              className="flex items-center gap-1.5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+            >
+              <Copy className="h-3 w-3" />
+              Copy All
+            </m.span>
+          )}
+        </AnimatePresence>
+      </Button>
+    )
+  }
+
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      className={cn('h-7 w-7 text-muted-foreground hover:text-foreground', className)}
+      onClick={handleCopy}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        {copied ? (
+          <m.span
+            key="copied"
+            initial={{ opacity: 0, scale: 0.75 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <Check className="h-3.5 w-3.5 text-green-400" />
+          </m.span>
+        ) : (
+          <m.span
+            key="copy"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </m.span>
+        )}
+      </AnimatePresence>
+    </Button>
+  )
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -110,19 +200,10 @@ function ScriptSectionCard({
             {label}
           </span>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          onClick={() => copy(content, label)}
-        >
-          <Copy className="h-3.5 w-3.5" />
-        </Button>
+        <CopyButton text={content} label={label} />
       </div>
       <div className="px-4 py-4">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-          {content}
-        </p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{content}</p>
       </div>
     </div>
   )
@@ -138,22 +219,22 @@ function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
   ].join('\n')
 
   return (
-    <div className="space-y-4 px-6 py-6">
+    <m.div
+      className="space-y-4 px-6 py-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Script header */}
-      <div className="space-y-2">
+      <m.div variants={itemVariants} className="space-y-2">
         <div className="flex items-start justify-between gap-4">
-          <p className="text-base font-semibold leading-snug text-foreground">
-            {idea.hookLine}
-          </p>
-          <Button
-            variant="outline"
+          <p className="text-base font-semibold leading-snug text-foreground">{idea.hookLine}</p>
+          <CopyButton
+            text={buildScriptText(script)}
+            label="Full script"
             size="sm"
-            className="shrink-0 gap-1.5 text-xs"
-            onClick={() => copy(buildScriptText(script), 'Full script')}
-          >
-            <Copy className="h-3 w-3" />
-            Copy All
-          </Button>
+            className="shrink-0"
+          />
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>
@@ -166,10 +247,10 @@ function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
           <span>{new Date(script.createdAt).toLocaleString()}</span>
           <StatusBadge status={script.status} />
         </div>
-      </div>
+      </m.div>
 
       {/* Hooks card */}
-      <div className="rounded-lg border border-border bg-card">
+      <m.div variants={itemVariants} className="rounded-lg border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -177,15 +258,7 @@ function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
               Hook Variations
             </span>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => copy(hooksText, 'Hook variations')}
-          >
-            <Copy className="h-3 w-3" />
-            Copy All
-          </Button>
+          <CopyButton text={hooksText} label="Hook variations" size="sm" />
         </div>
         <div className="divide-y divide-border">
           {[script.hook1, script.hook2, script.hook3].map((hook, i) => (
@@ -194,29 +267,19 @@ function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
                 {i + 1}
               </span>
               <p className="flex-1 text-sm leading-relaxed text-foreground/90">{hook}</p>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-                onClick={() => copy(hook, `Hook ${i + 1}`)}
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
+              <CopyButton text={hook} label={`Hook ${i + 1}`} />
             </div>
           ))}
         </div>
-      </div>
+      </m.div>
 
       {/* Body sections */}
       {BODY_SECTIONS.map(({ key, label, icon }) => (
-        <ScriptSectionCard
-          key={key}
-          label={label}
-          icon={icon}
-          content={script.body[key]}
-        />
+        <m.div key={key} variants={itemVariants}>
+          <ScriptSectionCard label={label} icon={icon} content={script.body[key]} />
+        </m.div>
       ))}
-    </div>
+    </m.div>
   )
 }
 
@@ -225,7 +288,12 @@ function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
 function EmptyRightPanel() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="space-y-3 text-center">
+      <m.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="space-y-3 text-center"
+      >
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
           <FileText className="h-6 w-6 text-muted-foreground" />
         </div>
@@ -233,7 +301,7 @@ function EmptyRightPanel() {
         <p className="max-w-55 text-xs text-muted-foreground">
           Select an approved idea to generate or view its script.
         </p>
-      </div>
+      </m.div>
     </div>
   )
 }
@@ -267,7 +335,12 @@ function NoScriptPanel({
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="space-y-4 text-center">
+      <m.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="space-y-4 text-center"
+      >
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <Sparkles className="h-6 w-6 text-primary" />
         </div>
@@ -292,7 +365,7 @@ function NoScriptPanel({
           )}
           {isGenerating ? 'Generating…' : 'Generate Script'}
         </Button>
-      </div>
+      </m.div>
     </div>
   )
 }
@@ -302,7 +375,6 @@ function NoScriptPanel({
 export function ContentStudioPage() {
   const navigate = useNavigate()
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
-  const [knownScriptIds, setKnownScriptIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
 
   const {
@@ -312,51 +384,46 @@ export function ContentStudioPage() {
     refetch: refetchIdeas,
   } = useApprovedIdeas()
 
-  const scriptQuery = useScriptForIdea(selectedIdeaId)
+  const { data: scripts = [] } = useScripts()
+
+  const scriptQuery      = useScriptForIdea(selectedIdeaId)
   const generateMutation = useGenerateScript()
 
   const selectedIdea = approvedIdeas.find(i => i.id === selectedIdeaId) ?? null
+
+  const generatedIdeaIds = useMemo(
+    () => new Set(scripts.map(s => s.ideaId)),
+    [scripts],
+  )
 
   const filteredIdeas = useMemo(() => {
     if (!search.trim()) return approvedIdeas
     const q = search.toLowerCase()
     return approvedIdeas.filter(
-      i =>
-        i.hookLine.toLowerCase().includes(q) ||
-        i.targetAvatar.toLowerCase().includes(q),
+      i => i.hookLine.toLowerCase().includes(q) || i.targetAvatar.toLowerCase().includes(q),
     )
   }, [approvedIdeas, search])
 
-  // When the script query resolves with data, mark this idea as having a script
-  useEffect(() => {
-    if (selectedIdeaId && scriptQuery.data != null) {
-      setKnownScriptIds(prev => new Set(prev).add(selectedIdeaId))
-    }
-  }, [selectedIdeaId, scriptQuery.data])
+  const PAGE_SIZE = 10
+  const { page, setPage, totalPages, pageItems: ideaPage } = usePagination(filteredIdeas, PAGE_SIZE)
 
-  const handleSelect = (idea: Idea) => setSelectedIdeaId(idea.id)
+  useEffect(() => { setPage(1) }, [search, setPage])
+
+  const handleSelect   = (idea: Idea) => setSelectedIdeaId(idea.id)
 
   const handleGenerate = (idea: Idea) => {
     setSelectedIdeaId(idea.id)
     const clientContext = MOCK_CLIENTS.find(c => c.id === idea.clientId)
     if (!clientContext) return
-    generateMutation.mutate(
-      { ideaId: idea.id, clientContext },
-      { onSuccess: () => setKnownScriptIds(prev => new Set(prev).add(idea.id)) },
-    )
+    generateMutation.mutate({ ideaId: idea.id, clientContext })
   }
 
-  // ── Right panel render ──────────────────────────────────────────────────────
-
   const isCurrentlyGenerating =
-    generateMutation.isPending &&
-    generateMutation.variables?.ideaId === selectedIdeaId
+    generateMutation.isPending && generateMutation.variables?.ideaId === selectedIdeaId
 
   const rightPanel = (() => {
     if (!selectedIdeaId || !selectedIdea) return <EmptyRightPanel />
-
     if (scriptQuery.isLoading || isCurrentlyGenerating) return <ScriptLoadingSkeleton />
-
     const script = scriptQuery.data ?? null
     if (script === null) {
       return (
@@ -367,19 +434,14 @@ export function ContentStudioPage() {
         />
       )
     }
-
     return <ScriptViewer idea={selectedIdea} script={script} />
   })()
-
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="shrink-0 border-b border-border px-6 py-5">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Content Studio
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Content Studio</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           Generate and review AI-written marketing scripts.
         </p>
@@ -390,8 +452,6 @@ export function ContentStudioPage() {
 
         {/* ── Left panel ────────────────────────────────────────────── */}
         <div className="flex w-85 shrink-0 flex-col border-r border-border">
-
-          {/* Search bar */}
           <div className="shrink-0 border-b border-border p-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -404,10 +464,7 @@ export function ContentStudioPage() {
             </div>
           </div>
 
-          {/* Idea list */}
           <div className="flex-1 overflow-y-auto">
-
-            {/* Loading skeletons */}
             {ideasLoading && (
               <div>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -420,65 +477,40 @@ export function ContentStudioPage() {
               </div>
             )}
 
-            {/* Error */}
             {ideasError && (
               <div className="flex flex-col items-center gap-3 p-6 text-center">
                 <AlertCircle className="h-6 w-6 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">
-                  Failed to load approved ideas.
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void refetchIdeas()}
-                >
-                  Retry
-                </Button>
+                <p className="text-xs text-muted-foreground">Failed to load approved ideas.</p>
+                <Button size="sm" variant="outline" onClick={() => void refetchIdeas()}>Retry</Button>
               </div>
             )}
 
-            {/* No approved ideas */}
             {!ideasLoading && !ideasError && approvedIdeas.length === 0 && (
               <div className="flex flex-col items-center gap-3 p-6 text-center">
                 <FileText className="h-8 w-8 text-muted-foreground" />
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-foreground">
-                    No approved ideas
-                  </p>
+                  <p className="text-xs font-medium text-foreground">No approved ideas</p>
                   <p className="text-[11px] text-muted-foreground">
                     Approve ideas in Idea Intelligence first.
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs"
-                  onClick={() => navigate('/ideas')}
-                >
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate('/ideas')}>
                   Go to Idea Intelligence
                 </Button>
               </div>
             )}
 
-            {/* No search results */}
-            {!ideasLoading &&
-              !ideasError &&
-              approvedIdeas.length > 0 &&
-              filteredIdeas.length === 0 && (
-                <div className="p-6 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    No ideas match your search.
-                  </p>
-                </div>
-              )}
+            {!ideasLoading && !ideasError && approvedIdeas.length > 0 && filteredIdeas.length === 0 && (
+              <div className="p-6 text-center">
+                <p className="text-xs text-muted-foreground">No ideas match your search.</p>
+              </div>
+            )}
 
-            {/* Idea list items */}
-            {filteredIdeas.map(idea => {
-              const isSelected = idea.id === selectedIdeaId
-              const hasScript = knownScriptIds.has(idea.id)
+            {ideaPage.map(idea => {
+              const isSelected  = idea.id === selectedIdeaId
+              const hasScript   = generatedIdeaIds.has(idea.id)
               const isGenerating =
-                generateMutation.isPending &&
-                generateMutation.variables?.ideaId === idea.id
+                generateMutation.isPending && generateMutation.variables?.ideaId === idea.id
               const clientExists = MOCK_CLIENTS.some(c => c.id === idea.clientId)
               const rec = idea.iceScore?.recommendation ?? null
 
@@ -494,28 +526,17 @@ export function ContentStudioPage() {
                   <p className="mb-1.5 line-clamp-2 text-sm font-medium leading-snug text-foreground">
                     {idea.hookLine}
                   </p>
-
                   <div className="mb-2.5 flex items-center justify-between gap-2">
-                    <span className="truncate text-[11px] text-muted-foreground">
-                      {idea.targetAvatar}
-                    </span>
+                    <span className="truncate text-[11px] text-muted-foreground">{idea.targetAvatar}</span>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {rec && (
-                        <span
-                          className={cn(
-                            'rounded-full border px-1.5 py-0.5 text-[10px] font-semibold',
-                            REC_CLASS[rec],
-                          )}
-                        >
+                        <span className={cn('rounded-full border px-1.5 py-0.5 text-[10px] font-semibold', REC_CLASS[rec])}>
                           {rec}
                         </span>
                       )}
-                      <span className="text-[10px] text-muted-foreground/50">
-                        {relativeTime(idea.createdAt)}
-                      </span>
+                      <span className="text-[10px] text-muted-foreground/50">{relativeTime(idea.createdAt)}</span>
                     </div>
                   </div>
-
                   <Button
                     size="sm"
                     variant={hasScript ? 'secondary' : 'default'}
@@ -528,27 +549,42 @@ export function ContentStudioPage() {
                     }}
                   >
                     {isGenerating ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Generating…
-                      </>
+                      <><Loader2 className="h-3 w-3 animate-spin" />Generating…</>
                     ) : hasScript ? (
-                      'Open Script'
+                      <><FileText className="h-3 w-3" />Open Script</>
                     ) : (
-                      <>
-                        <Sparkles className="h-3 w-3" />
-                        Generate Script
-                      </>
+                      <><Sparkles className="h-3 w-3" />Generate Script</>
                     )}
                   </Button>
                 </button>
               )
             })}
           </div>
+          <Pagination
+            compact
+            page={page}
+            totalPages={totalPages}
+            total={filteredIdeas.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
         </div>
 
-        {/* ── Right panel ───────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">{rightPanel}</div>
+        {/* ── Right panel — transitions between states ───────────────── */}
+        <div className="flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <m.div
+              key={selectedIdeaId ?? 'empty'}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="h-full"
+            >
+              {rightPanel}
+            </m.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )

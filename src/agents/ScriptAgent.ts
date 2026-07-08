@@ -18,17 +18,8 @@
  *   content director real creative options.
  *
  * WHY memoryContext IS PASSED BUT CAN BE EMPTY:
- *   The Memory Agent (not yet implemented) will supply previously approved scripts
- *   so the AI can avoid repeating structures and proof references. In Phase 1,
- *   memoryContext is always []. The prompt handles both cases — no empty-array guard
- *   is needed in the agent. When the Memory Agent is added, this method signature
- *   does not change.
- *
- * HOW THE ORCHESTRATOR WILL USE THIS AGENT (Phase 7–10):
- *   const scriptResult = await scriptAgent.generateScript(approvedIdea, context, previousScripts);
- *   if (!scriptResult.success) { ... handle error }
- *   const reviewResult = await qualityReviewAgent.reviewScript(scriptResult.data, context);
- *   ...
+ *   Passing [] is valid — the prompt omits the memory section gracefully when the
+ *   array is empty. No empty-array guard needed in the agent.
  */
 
 import { randomUUID } from 'crypto';

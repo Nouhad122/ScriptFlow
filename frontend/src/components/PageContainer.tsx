@@ -1,4 +1,6 @@
+import { m } from 'motion/react'
 import { cn } from '@/lib/utils'
+import { pageVariants } from '@/lib/animations'
 
 interface PageContainerProps {
   children: React.ReactNode
@@ -7,8 +9,13 @@ interface PageContainerProps {
 
 export function PageContainer({ children, className }: PageContainerProps) {
   return (
-    <div className={cn('mx-auto max-w-7xl px-6 py-8', className)}>
+    <m.div
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+      className={cn('mx-auto max-w-7xl px-6 py-8', className)}
+    >
       {children}
-    </div>
+    </m.div>
   )
 }

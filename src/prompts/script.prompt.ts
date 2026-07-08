@@ -17,7 +17,7 @@
  *   The Memory Agent supplies previously approved scripts so the AI can learn
  *   from what worked. It avoids repeating structural patterns, phrase choices,
  *   and proof references that have already been used. When memoryContext is
- *   empty (as in Phase 1), the AI generates from the idea and context alone.
+ *   empty, the AI generates from the idea and context alone.
  *   The prompt handles this gracefully — if the array is empty, the section
  *   is omitted rather than shown as "(none)".
  *

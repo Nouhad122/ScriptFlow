@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { LazyMotion, domAnimation } from 'motion/react'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,  // data stays fresh for 1 min — avoids refetch on every nav
-      retry: 1,           // one retry on network failure (API is local, fast to fail)
+      staleTime: 60_000,
+      retry: 1,
     },
   },
 })
@@ -16,7 +17,10 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      {/* reducedMotion="user" makes every m.* component respect prefers-reduced-motion */}
+      <LazyMotion features={domAnimation} reducedMotion="user">
+        {children}
+      </LazyMotion>
     </QueryClientProvider>
   )
 }

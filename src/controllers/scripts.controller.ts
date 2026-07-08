@@ -166,7 +166,6 @@ export async function generateScript(req: Request, res: Response): Promise<void>
 
   const agent = new ScriptAgent(ai);
 
-  // memoryContext is [] until the Memory Agent is implemented (Phase 5–6).
   const result = await agent.generateScript(idea, clientContext, []);
 
   if (!result.success) {

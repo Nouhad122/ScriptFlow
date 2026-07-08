@@ -1,7 +1,9 @@
 import { Brain, Search, Loader2, AlertTriangle, SearchX } from 'lucide-react'
+import { m, AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { containerVariants, itemVariants, scaleInVariants, fadeVariants } from '@/lib/animations'
 import { useSearchMemory } from '@/hooks/use-search-memory'
 import type { MemoryMatch } from '@/services/memory.service'
 import type { ClientContext } from '@/types'
@@ -55,9 +57,13 @@ function MatchRow({ match }: { match: MemoryMatch }) {
   const preview = extractPreview(match.text)
   const pct = Math.round(match.similarity * 100)
   const tier = qualityTier(match.similarity)
+  const isStrong = match.similarity >= 0.70
 
   return (
-    <div className="flex items-start gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5">
+    <m.div
+      variants={itemVariants}
+      className="flex items-start gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5"
+    >
       <span
         className={cn(
           'mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
@@ -70,14 +76,17 @@ function MatchRow({ match }: { match: MemoryMatch }) {
       </span>
       <p className="min-w-0 flex-1 truncate text-xs text-foreground">{preview}</p>
       <div className="flex shrink-0 items-center gap-1.5">
-        <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', tier.className)}>
+        <m.span
+          variants={isStrong ? scaleInVariants : fadeVariants}
+          className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide', tier.className)}
+        >
           {tier.label}
-        </span>
+        </m.span>
         <span className="text-xs font-semibold tabular-nums text-muted-foreground">
           {pct}%
         </span>
       </div>
-    </div>
+    </m.div>
   )
 }
 
@@ -87,9 +96,16 @@ function MatchList({ matches }: { matches: MemoryMatch[] }) {
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
         {matches.length} match{matches.length === 1 ? '' : 'es'} · sorted by similarity
       </p>
-      {matches.map((m) => (
-        <MatchRow key={m.sourceId} match={m} />
-      ))}
+      <m.div
+        className="space-y-1.5"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {matches.map((match) => (
+          <MatchRow key={match.sourceId} match={match} />
+        ))}
+      </m.div>
     </div>
   )
 }
@@ -122,13 +138,22 @@ export function MemoryExplorer({ client }: MemoryExplorerProps) {
         </p>
       )}
 
-      {mutation.isSuccess && mutation.data && (
-        <>
-          {mutation.data.warning && <WarningBanner message={mutation.data.warning} />}
-          {mutation.data.matches.length === 0 && !mutation.data.warning && <EmptyMatches />}
-          {mutation.data.matches.length > 0 && <MatchList matches={mutation.data.matches} />}
-        </>
-      )}
+      <AnimatePresence mode="wait">
+        {mutation.isSuccess && mutation.data && (
+          <m.div
+            key="results"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-1.5"
+          >
+            {mutation.data.warning && <WarningBanner message={mutation.data.warning} />}
+            {mutation.data.matches.length === 0 && !mutation.data.warning && <EmptyMatches />}
+            {mutation.data.matches.length > 0 && <MatchList matches={mutation.data.matches} />}
+          </m.div>
+        )}
+      </AnimatePresence>
 
       {mutation.isError && (
         <p className="text-xs text-destructive">

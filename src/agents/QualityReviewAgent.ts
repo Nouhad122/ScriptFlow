@@ -15,15 +15,6 @@
  *   A fabricated claim that reaches the client is worse than a weak hook that does not.
  *   If fabrication.pass is false, HOLD is the only valid outcome regardless of all
  *   other scores. The prompt instructs the AI to be strict on this criterion.
- *
- * HOW THE ORCHESTRATOR WILL USE THIS AGENT (Phase 7–10):
- *   const reviewResult = await qualityReviewAgent.reviewScript(script, idea, context);
- *   if (!reviewResult.success) { ... handle agent error }
- *   if (reviewResult.data.overallDecision === 'PASS') {
- *     await deliveryAgent.deliverScript(script, context);
- *   } else {
- *     // script is held — log heldReason, optionally regenerate
- *   }
  */
 
 import { randomUUID } from 'crypto';

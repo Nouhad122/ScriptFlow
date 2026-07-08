@@ -17,12 +17,14 @@ import {
   Circle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { m } from 'motion/react'
 import { PageContainer } from '@/components/PageContainer'
 import { SectionHeader } from '@/components/SectionHeader'
 import { StatCard } from '@/components/StatCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { useDashboardSummary } from '@/hooks/use-dashboard-summary'
+import { containerVariants, itemVariants } from '@/lib/animations'
 import type { DashboardSummary } from '@/types'
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -60,66 +62,21 @@ interface StatConfig {
 }
 
 const pipelineStats: StatConfig[] = [
-  {
-    key: 'pipelines',
-    label: 'Pipeline Runs',
-    icon: GitBranch,
-    description: 'Total runs completed',
-  },
-  {
-    key: 'ideasGenerated',
-    label: 'Ideas Generated',
-    icon: Lightbulb,
-    description: 'Across all pipeline runs',
-  },
-  {
-    key: 'scriptsGenerated',
-    label: 'Scripts Generated',
-    icon: FileText,
-    description: 'From approved ideas',
-  },
+  { key: 'pipelines',        label: 'Pipeline Runs',      icon: GitBranch,  description: 'Total runs completed' },
+  { key: 'ideasGenerated',   label: 'Ideas Generated',    icon: Lightbulb,  description: 'Across all pipeline runs' },
+  { key: 'scriptsGenerated', label: 'Scripts Generated',  icon: FileText,   description: 'From approved ideas' },
 ]
 
 const ideaStats: StatConfig[] = [
-  {
-    key: 'pendingIdeas',
-    label: 'Pending Approval',
-    icon: Clock,
-    description: 'Awaiting human review',
-  },
-  {
-    key: 'approvedIdeas',
-    label: 'Approved Ideas',
-    icon: CheckCircle2,
-    description: 'Ready for scripting',
-  },
-  {
-    key: 'rejectedIdeas',
-    label: 'Rejected Ideas',
-    icon: XCircle,
-    description: 'Not selected for scripting',
-  },
+  { key: 'pendingIdeas',  label: 'Pending Approval', icon: Clock,        description: 'Awaiting human review' },
+  { key: 'approvedIdeas', label: 'Approved Ideas',   icon: CheckCircle2, description: 'Ready for scripting' },
+  { key: 'rejectedIdeas', label: 'Rejected Ideas',   icon: XCircle,      description: 'Not selected for scripting' },
 ]
 
 const reviewStats: StatConfig[] = [
-  {
-    key: 'pendingReviews',
-    label: 'Pending Review',
-    icon: ClipboardList,
-    description: 'Awaiting quality review',
-  },
-  {
-    key: 'passedReviews',
-    label: 'Passed Quality',
-    icon: CheckCircle,
-    description: 'Cleared for delivery',
-  },
-  {
-    key: 'heldReviews',
-    label: 'Scripts on Hold',
-    icon: PauseCircle,
-    description: 'Flagged by quality review',
-  },
+  { key: 'pendingReviews', label: 'Pending Review',  icon: ClipboardList, description: 'Awaiting quality review' },
+  { key: 'passedReviews',  label: 'Passed Quality',  icon: CheckCircle,   description: 'Cleared for delivery' },
+  { key: 'heldReviews',    label: 'Scripts on Hold', icon: PauseCircle,   description: 'Flagged by quality review' },
 ]
 
 // ── Workflow Snapshot ─────────────────────────────────────────────────────────
@@ -131,31 +88,11 @@ interface WorkflowStep {
 }
 
 const workflowSteps: WorkflowStep[] = [
-  {
-    icon: Lightbulb,
-    name: 'Idea Agent',
-    description: 'Generates creative hooks and angles from client context',
-  },
-  {
-    icon: BarChart3,
-    name: 'ICE Scoring',
-    description: 'Scores ideas by Impact, Confidence, and Ease',
-  },
-  {
-    icon: UserCheck,
-    name: 'Human Approval',
-    description: 'Ideas reviewed and approved before scripting',
-  },
-  {
-    icon: FileText,
-    name: 'Script Agent',
-    description: 'Transforms approved ideas into full video scripts',
-  },
-  {
-    icon: ShieldCheck,
-    name: 'Quality Review',
-    description: 'Evaluates scripts across 10 quality criteria',
-  },
+  { icon: Lightbulb,   name: 'Idea Agent',      description: 'Generates creative hooks and angles from client context' },
+  { icon: BarChart3,   name: 'ICE Scoring',     description: 'Scores ideas by Impact, Confidence, and Ease' },
+  { icon: UserCheck,   name: 'Human Approval',  description: 'Ideas reviewed and approved before scripting' },
+  { icon: FileText,    name: 'Script Agent',    description: 'Transforms approved ideas into full video scripts' },
+  { icon: ShieldCheck, name: 'Quality Review',  description: 'Evaluates scripts across 10 quality criteria' },
 ]
 
 function WorkflowSnapshot() {
@@ -188,16 +125,13 @@ function WorkflowSnapshot() {
 
 // ── System Health ─────────────────────────────────────────────────────────────
 
-interface HealthItem {
-  label: string
-  value: string
-}
+interface HealthItem { label: string; value: string }
 
 const healthItems: HealthItem[] = [
   { label: 'AI Provider', value: 'OpenRouter' },
-  { label: 'Model', value: 'DeepSeek Chat V3' },
-  { label: 'Database', value: 'SQLite (libsql)' },
-  { label: 'Status', value: 'All Systems' },
+  { label: 'Model',       value: 'DeepSeek Chat V3' },
+  { label: 'Database',    value: 'SQLite (libsql)' },
+  { label: 'Status',      value: 'All Systems' },
 ]
 
 function SystemHealth() {
@@ -248,6 +182,7 @@ function StatsError({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 // ── Stat section ──────────────────────────────────────────────────────────────
+// Each section staggers its three StatCards in with containerVariants.
 
 function StatSection({
   label,
@@ -260,20 +195,24 @@ function StatSection({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <div className="grid grid-cols-3 gap-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <m.div
+        className="grid grid-cols-3 gap-4"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {configs.map((config) => (
-          <StatCard
-            key={config.key}
-            label={config.label}
-            value={data[config.key]}
-            icon={config.icon}
-            description={config.description}
-          />
+          <m.div key={config.key} variants={itemVariants}>
+            <StatCard
+              label={config.label}
+              value={data[config.key]}
+              icon={config.icon}
+              description={config.description}
+            />
+          </m.div>
         ))}
-      </div>
+      </m.div>
     </div>
   )
 }
@@ -308,21 +247,17 @@ export function OverviewPage() {
             <StatsError message={errorMessage} onRetry={refetch} />
           ) : data ? (
             <div className="space-y-6">
-              <StatSection label="Pipeline" configs={pipelineStats} data={data} />
-              <StatSection label="Idea Breakdown" configs={ideaStats} data={data} />
-              <StatSection label="Review Status" configs={reviewStats} data={data} />
+              <StatSection label="Pipeline"        configs={pipelineStats} data={data} />
+              <StatSection label="Idea Breakdown"  configs={ideaStats}     data={data} />
+              <StatSection label="Review Status"   configs={reviewStats}   data={data} />
             </div>
           ) : null}
         </div>
 
-        {/* Static panels — always rendered */}
+        {/* Static panels */}
         <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2">
-            <WorkflowSnapshot />
-          </div>
-          <div className="col-span-1">
-            <SystemHealth />
-          </div>
+          <div className="col-span-2"><WorkflowSnapshot /></div>
+          <div className="col-span-1"><SystemHealth /></div>
         </div>
       </div>
     </PageContainer>

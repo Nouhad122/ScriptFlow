@@ -36,20 +36,6 @@ export interface IIceScoringAgent {
 }
 
 /**
- * Owns all persistence for the self-iterating memory layer:
- *   - Stores and retrieves previous ideas (used for duplicate prevention)
- *   - Stores and retrieves approved scripts (used as learning context for the Script Agent)
- *   - Checks whether a new idea is semantically similar to a previous one
- */
-export interface IMemoryAgent {
-  getPreviousIdeas(clientId: string): Promise<Idea[]>;
-  storeIdeas(ideas: Idea[]): Promise<void>;
-  getApprovedScripts(clientId: string): Promise<Script[]>;
-  storeApprovedScript(script: Script): Promise<void>;
-  isDuplicate(hookLine: string, clientId: string): Promise<boolean>;
-}
-
-/**
  * Generates a complete, production-ready script from an approved idea.
  * Receives the full Idea record, ClientContext, and previously approved scripts
  * as memory context so each generation round can improve on the last.
@@ -82,11 +68,3 @@ export interface IQualityReviewAgent {
   ): Promise<AgentResult<QualityReview>>;
 }
 
-/**
- * Formats a passing script as a clean Markdown document and writes it to the output folder.
- * Returns the file path of the delivered document.
- * Zero manual steps between quality approval and delivery.
- */
-export interface IDeliveryAgent {
-  deliverScript(script: Script, context: ClientContext): Promise<AgentResult<string>>;
-}

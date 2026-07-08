@@ -1,3 +1,4 @@
+import { m } from 'motion/react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,10 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div
+    <m.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       className={cn(
         'flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border py-16 text-center',
         className,
@@ -37,6 +41,6 @@ export function EmptyState({ icon: Icon, title, description, action, className }
           {action.label}
         </Button>
       )}
-    </div>
+    </m.div>
   )
 }

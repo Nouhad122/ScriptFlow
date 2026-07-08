@@ -4,13 +4,6 @@
  * Single responsibility: produce a validated batch of Idea objects.
  * This agent does NOT score, script, review, or deliver anything.
  *
- * HOW THE ORCHESTRATOR WILL CALL THIS AGENT:
- *   const previousIdeas = await memoryAgent.getPreviousIdeas(context.id);
- *   const result = await ideaAgent.generateIdeas(context, previousIdeas);
- *   if (!result.success) { ... handle error }
- *   await memoryAgent.storeIdeas(result.data);
- *   // ideas are now in the dashboard awaiting human approval
- *
  * WHY SCORING IS A SEPARATE AGENT:
  *   Generating ideas and scoring ideas are two distinct responsibilities with
  *   separate prompts and separate purposes. Collapsing them would couple
@@ -125,7 +118,7 @@ function mapToIdeas(raw: RawIdeaFromAI[], clientId: string): Idea[] {
   return raw.map((r) => ({
     id: randomUUID(),
     clientId,
-    pipelineRunId: '', // assigned by the orchestrator once pipeline runs are implemented
+    pipelineRunId: '',
     hookLine: r.concept,
     creativeType: r.creativeType as CreativeType,
     angle: r.angle,

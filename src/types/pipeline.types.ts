@@ -29,12 +29,6 @@ export type AgentResult<T> =
     };
 
 /**
- * PipelineRunStatus tracks the state of a full pipeline execution from trigger to delivery.
- */
-export type PipelineRunStatus =
-  'running' | 'awaiting_approval' | 'processing_script' | 'completed' | 'failed';
-
-/**
  * PipelineSummary is the per-run breakdown of ICE recommendations.
  * "Candidates" refers to the AI's recommendation, not the human's approval decision.
  * At the time the pipeline completes, all ideas are still pending human review.
@@ -83,22 +77,3 @@ export type PipelineRunResult =
       error: string;
     };
 
-/**
- * PipelineRun is a record of one full execution of the pipeline.
- * Stored in the database so runs are inspectable from the dashboard.
- */
-export interface PipelineRun {
-  id: string;
-  clientId: string;
-  status: PipelineRunStatus;
-
-  ideasGenerated: number;
-  ideasApproved: number;
-  scriptsGenerated: number;
-  scriptsPassed: number;
-  scriptsHeld: number;
-
-  startedAt: Date;
-  completedAt: Date | null;
-  error: string | null;
-}

@@ -1,9 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { usePagination } from '@/hooks/use-pagination'
+import { Pagination } from '@/components/ui/pagination'
 import { CheckCircle2, XCircle, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
+import { m, AnimatePresence, useReducedMotion } from 'motion/react'
+import { animate } from 'motion'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
+import { containerVariants, itemVariants } from '@/lib/animations'
 import { useScripts } from '@/hooks/use-scripts'
 import { useReviewForScript } from '@/hooks/use-review-for-script'
 import { useRunQualityReview } from '@/hooks/use-run-quality-review'
@@ -26,6 +31,26 @@ function scoreChipClass(score: number): string {
   if (score >= 8) return 'bg-green-500/10 text-green-400 border-green-500/20'
   if (score >= 5) return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
   return 'bg-red-500/10 text-red-400 border-red-500/20'
+}
+
+// ── Animated score counter ────────────────────────────────────────────────────
+
+function AnimatedScore({ value, className }: { value: number; className?: string }) {
+  const ref     = useRef<HTMLSpanElement>(null)
+  const reduced = useReducedMotion()
+
+  useEffect(() => {
+    if (!ref.current) return
+    if (reduced) { ref.current.textContent = String(value); return }
+    const ctrl = animate(0, value, {
+      duration: 0.9,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate(v) { if (ref.current) ref.current.textContent = String(Math.round(v)) },
+    })
+    return () => ctrl.stop()
+  }, [value, reduced])
+
+  return <span ref={ref} className={className}>{value}</span>
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -98,14 +123,17 @@ function ReviewPanel({ review }: { review: QualityReview }) {
   const isPassed = review.overallDecision === 'PASS'
 
   return (
-    <div className="space-y-4 p-6">
+    <m.div
+      className="space-y-4 p-6"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+    >
       {/* Overall result */}
       <div
         className={cn(
           'rounded-lg border p-4',
-          isPassed
-            ? 'border-green-500/20 bg-green-500/5'
-            : 'border-orange-500/20 bg-orange-500/5',
+          isPassed ? 'border-green-500/20 bg-green-500/5' : 'border-orange-500/20 bg-orange-500/5',
         )}
       >
         <div className="flex items-center justify-between">
@@ -123,13 +151,8 @@ function ReviewPanel({ review }: { review: QualityReview }) {
             </div>
           </div>
           <div className="text-right">
-            <p
-              className={cn(
-                'text-3xl font-bold',
-                isPassed ? 'text-green-400' : 'text-orange-400',
-              )}
-            >
-              {review.overallScore}
+            <p className={cn('text-3xl font-bold', isPassed ? 'text-green-400' : 'text-orange-400')}>
+              <AnimatedScore value={review.overallScore} />
             </p>
             <p className="text-[10px] text-muted-foreground">/ 100</p>
           </div>
@@ -144,20 +167,27 @@ function ReviewPanel({ review }: { review: QualityReview }) {
         </div>
       </div>
 
-      {/* Check list */}
+      {/* Staggered check list */}
       <div className="rounded-lg border border-border bg-card">
         <div className="border-b border-border px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Quality Checks
           </p>
         </div>
-        <div className="px-4">
+        <m.div
+          className="px-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {CHECK_ENTRIES.map(([key, label]) => (
-            <CheckRow key={key} label={label} check={review.checks[key]} />
+            <m.div key={key} variants={itemVariants}>
+              <CheckRow label={label} check={review.checks[key]} />
+            </m.div>
           ))}
-        </div>
+        </m.div>
       </div>
-    </div>
+    </m.div>
   )
 }
 
@@ -166,7 +196,12 @@ function ReviewPanel({ review }: { review: QualityReview }) {
 function EmptyRightPanel() {
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="space-y-3 text-center">
+      <m.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="space-y-3 text-center"
+      >
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
           <ShieldCheck className="h-6 w-6 text-muted-foreground" />
         </div>
@@ -174,7 +209,7 @@ function EmptyRightPanel() {
         <p className="max-w-56 text-xs text-muted-foreground">
           Select a script from the queue to view or run its quality review.
         </p>
-      </div>
+      </m.div>
     </div>
   )
 }
@@ -216,7 +251,12 @@ function PendingReviewPanel({
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="space-y-4 text-center">
+      <m.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="space-y-4 text-center"
+      >
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
           <ShieldCheck className="h-6 w-6 text-primary" />
         </div>
@@ -241,7 +281,7 @@ function PendingReviewPanel({
           )}
           {isRunning ? 'Reviewing…' : 'Run Quality Review'}
         </Button>
-      </div>
+      </m.div>
     </div>
   )
 }
@@ -250,7 +290,7 @@ function PendingReviewPanel({
 
 export function QualityCenterPage() {
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [statusFilter, setStatusFilter]         = useState<StatusFilter>('all')
 
   const {
     data: scripts = [],
@@ -259,16 +299,14 @@ export function QualityCenterPage() {
     refetch: refetchScripts,
   } = useScripts()
 
-  const reviewQuery = useReviewForScript(selectedScriptId)
+  const reviewQuery    = useReviewForScript(selectedScriptId)
   const reviewMutation = useRunQualityReview()
 
   const selectedScript = scripts.find(s => s.id === selectedScriptId) ?? null
 
   const countByStatus = useMemo(() => {
     const counts: Record<string, number> = { all: scripts.length }
-    for (const s of scripts) {
-      counts[s.status] = (counts[s.status] ?? 0) + 1
-    }
+    for (const s of scripts) counts[s.status] = (counts[s.status] ?? 0) + 1
     return counts
   }, [scripts])
 
@@ -277,24 +315,24 @@ export function QualityCenterPage() {
     return scripts.filter(s => s.status === statusFilter)
   }, [scripts, statusFilter])
 
+  const PAGE_SIZE = 10
+  const { page, setPage, totalPages, pageItems: scriptPage } = usePagination(filteredScripts, PAGE_SIZE)
+
+  useEffect(() => { setPage(1) }, [statusFilter, setPage])
+
   const handleRunReview = (script: ScriptWithHook) => {
     const clientContext = MOCK_CLIENTS.find(c => c.id === script.clientId)
     if (!clientContext) return
     reviewMutation.mutate({ scriptId: script.id, clientContext })
   }
 
-  // ── Right panel render ──────────────────────────────────────────────────────
-
   const isCurrentlyReviewing =
     reviewMutation.isPending && reviewMutation.variables?.scriptId === selectedScriptId
 
   const rightPanel = (() => {
     if (!selectedScriptId || !selectedScript) return <EmptyRightPanel />
-
     if (reviewQuery.isLoading || isCurrentlyReviewing) return <ReviewSkeleton />
-
     const review = reviewQuery.data ?? null
-
     if (!review && selectedScript.status === 'pending_review') {
       return (
         <PendingReviewPanel
@@ -304,25 +342,19 @@ export function QualityCenterPage() {
         />
       )
     }
-
     if (!review) {
       return (
         <div className="flex h-full items-center justify-center">
           <div className="space-y-3 text-center">
             <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Review data unavailable.</p>
-            <Button size="sm" variant="outline" onClick={() => void reviewQuery.refetch()}>
-              Retry
-            </Button>
+            <Button size="sm" variant="outline" onClick={() => void reviewQuery.refetch()}>Retry</Button>
           </div>
         </div>
       )
     }
-
     return <ReviewPanel review={review} />
   })()
-
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-full flex-col">
@@ -339,8 +371,6 @@ export function QualityCenterPage() {
 
         {/* ── Left panel ────────────────────────────────────────────── */}
         <div className="flex w-80 shrink-0 flex-col border-r border-border">
-
-          {/* Status filter tabs */}
           <div className="shrink-0 border-b border-border p-2">
             <div className="flex gap-1">
               {STATUS_TABS.map(tab => (
@@ -370,10 +400,7 @@ export function QualityCenterPage() {
             </div>
           </div>
 
-          {/* Script list */}
           <div className="flex-1 overflow-y-auto">
-
-            {/* Loading */}
             {scriptsLoading && (
               <div>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -390,18 +417,14 @@ export function QualityCenterPage() {
               </div>
             )}
 
-            {/* Error */}
             {scriptsError && (
               <div className="flex flex-col items-center gap-3 p-6 text-center">
                 <AlertCircle className="h-6 w-6 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Failed to load scripts.</p>
-                <Button size="sm" variant="outline" onClick={() => void refetchScripts()}>
-                  Retry
-                </Button>
+                <Button size="sm" variant="outline" onClick={() => void refetchScripts()}>Retry</Button>
               </div>
             )}
 
-            {/* Empty — no scripts at all */}
             {!scriptsLoading && !scriptsError && scripts.length === 0 && (
               <div className="flex flex-col items-center gap-2 p-6 text-center">
                 <ShieldCheck className="h-8 w-8 text-muted-foreground" />
@@ -412,22 +435,16 @@ export function QualityCenterPage() {
               </div>
             )}
 
-            {/* Empty — filter has no results */}
-            {!scriptsLoading &&
-              !scriptsError &&
-              scripts.length > 0 &&
-              filteredScripts.length === 0 && (
-                <div className="p-6 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    No {statusFilter.replace('_', ' ')} scripts.
-                  </p>
-                </div>
-              )}
+            {!scriptsLoading && !scriptsError && scripts.length > 0 && filteredScripts.length === 0 && (
+              <div className="p-6 text-center">
+                <p className="text-xs text-muted-foreground">
+                  No {statusFilter.replace('_', ' ')} scripts.
+                </p>
+              </div>
+            )}
 
-            {/* Script queue items */}
-            {filteredScripts.map(script => {
+            {scriptPage.map(script => {
               const isSelected = script.id === selectedScriptId
-
               return (
                 <button
                   key={script.id}
@@ -453,10 +470,31 @@ export function QualityCenterPage() {
               )
             })}
           </div>
+          <Pagination
+            compact
+            page={page}
+            totalPages={totalPages}
+            total={filteredScripts.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+          />
         </div>
 
-        {/* ── Right panel ───────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">{rightPanel}</div>
+        {/* ── Right panel — transitions between states ───────────────── */}
+        <div className="flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <m.div
+              key={selectedScriptId ?? 'empty'}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="h-full"
+            >
+              {rightPanel}
+            </m.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { generateScript } from '@/services/scripts.service'
 import { scriptForIdeaKey } from '@/hooks/use-script-for-idea'
+import { scriptsKey } from '@/hooks/use-scripts'
 import { dashboardSummaryKey } from '@/hooks/use-dashboard-summary'
 import type { ClientContext } from '@/types'
 
@@ -20,6 +21,7 @@ export function useGenerateScript() {
     onSuccess: (script, { ideaId }) => {
       toast.success('Script generated.')
       queryClient.setQueryData(scriptForIdeaKey(ideaId), script)
+      void queryClient.invalidateQueries({ queryKey: scriptsKey })
       void queryClient.invalidateQueries({ queryKey: dashboardSummaryKey })
     },
 

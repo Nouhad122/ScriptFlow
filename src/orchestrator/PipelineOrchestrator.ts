@@ -30,49 +30,19 @@
  *   The orchestrator generates one UUID and stamps every idea before they are
  *   scored or persisted. This keeps IdeaAgent reusable in contexts that have
  *   no pipeline concept (the standalone /api/ideas/generate endpoint).
- *
- * WHY LATER-STAGE AGENTS ARE OPTIONAL:
- *   The constructor is honest about what each pipeline stage requires.
- *   Stage 1 (generate → score → save) needs ideaAgent and iceScoringAgent only.
- *   Making the later agents required would force callers to pass placeholders for
- *   unimplemented stages. They become required when their stages are implemented.
- *
- * ADDING A NEW STAGE:
- *   1. Add the agent interface to the constructor (optional → required when ready).
- *   2. Add a timed block in the relevant method.
- *   3. Check the AgentResult, return failure on error.
- *   4. Pass data to the next stage.
- *   No other file changes needed.
- *
- * CURRENT PIPELINE:
- *   generateAndScoreIdeas():
- *     MemorySearchService.findSimilarContent() [non-blocking on failure]
- *       → IdeaAgent.generateIdeas()
- *       → assign pipelineRunId
- *       → IceScoringAgent.scoreIdeas()
- *       → saveIdeas() [repository]
- *       → return PipelineRunResult
- *
- *   processApprovedIdea(): not yet implemented (Phase 7–10)
  */
 
 import { randomUUID } from 'crypto';
 import type {
-  AgentResult,
   ClientContext,
   Idea,
-  Script,
   PipelineRunResult,
   PipelineSummary,
   PipelineTimings,
 } from '../types';
 import type {
-  IDeliveryAgent,
   IIceScoringAgent,
   IIdeaAgent,
-  IMemoryAgent,
-  IQualityReviewAgent,
-  IScriptAgent,
 } from '../agents/interfaces';
 import { saveIdeas } from '../database/ideas.repository';
 import { savePipelineRun } from '../database/pipeline.repository';
@@ -84,27 +54,15 @@ export class PipelineOrchestrator {
   private readonly ideaAgent: IIdeaAgent;
   private readonly iceScoringAgent: IIceScoringAgent;
   private readonly memorySearchService?: MemorySearchService;
-  private readonly memoryAgent?: IMemoryAgent;
-  private readonly scriptAgent?: IScriptAgent;
-  private readonly qualityReviewAgent?: IQualityReviewAgent;
-  private readonly deliveryAgent?: IDeliveryAgent;
 
   constructor(
     ideaAgent: IIdeaAgent,
     iceScoringAgent: IIceScoringAgent,
     memorySearchService?: MemorySearchService,
-    memoryAgent?: IMemoryAgent,
-    scriptAgent?: IScriptAgent,
-    qualityReviewAgent?: IQualityReviewAgent,
-    deliveryAgent?: IDeliveryAgent
   ) {
     this.ideaAgent = ideaAgent;
     this.iceScoringAgent = iceScoringAgent;
     this.memorySearchService = memorySearchService;
-    this.memoryAgent = memoryAgent;
-    this.scriptAgent = scriptAgent;
-    this.qualityReviewAgent = qualityReviewAgent;
-    this.deliveryAgent = deliveryAgent;
   }
 
   // ---------------------------------------------------------------------------
@@ -328,17 +286,4 @@ export class PipelineOrchestrator {
     };
   }
 
-  // ---------------------------------------------------------------------------
-  // Stage 2 — Generate, review, and deliver a script for one approved idea
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Not implemented yet — requires ScriptAgent, QualityReviewAgent, DeliveryAgent.
-   * Triggered automatically when a human approves an idea from the dashboard.
-   * Implementation planned for Phase 7–10.
-   */
-  async processApprovedIdea(ideaId: string): Promise<AgentResult<Script>> {
-    void ideaId;
-    throw new Error('processApprovedIdea is not yet implemented');
-  }
 }
