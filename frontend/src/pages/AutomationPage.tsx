@@ -353,7 +353,7 @@ export function AutomationPage() {
     }
     if (mutation.isError) {
       const failedIdx =
-        mutation.error instanceof PipelineError && mutation.error.failedStage !== null
+        mutation.error instanceof PipelineError && mutation.error.failedStage
           ? (FAILED_STAGE_INDEX[mutation.error.failedStage] ?? 0)
           : 0
       return STAGES.map((_, i): StageStatus => {

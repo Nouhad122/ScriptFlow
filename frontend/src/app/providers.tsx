@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { LazyMotion, domAnimation } from 'motion/react'
+import { LazyMotion, MotionConfig, domAnimation } from 'motion/react'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -11,16 +12,15 @@ const queryClient = new QueryClient({
 })
 
 interface ProvidersProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* reducedMotion="user" makes every m.* component respect prefers-reduced-motion */}
-      <LazyMotion features={domAnimation} reducedMotion="user">
-        {children}
-      </LazyMotion>
+      <MotionConfig reducedMotion="user">
+        <LazyMotion features={domAnimation}>{children}</LazyMotion>
+      </MotionConfig>
     </QueryClientProvider>
   )
 }
