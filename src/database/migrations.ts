@@ -176,6 +176,34 @@ const MIGRATIONS: Migration[] = [
        ON memory_entries (source_type, source_id)`,
     ],
   },
+  {
+    id: '008_add_script_enhancements',
+    statements: [
+      // JSON objects keyed by body section (problem/story/solution/proof/cta).
+      // NULL on scripts generated before this migration.
+      `ALTER TABLE scripts ADD COLUMN section_pacing  TEXT`,
+      `ALTER TABLE scripts ADD COLUMN section_visuals TEXT`,
+    ],
+  },
+  {
+    id: '009_create_clients',
+    statements: [
+      // Nested objects (avatars, brandVoice, proofBank, offerMechanics) stored as
+      // JSON text — they have no query patterns that require individual columns.
+      `CREATE TABLE IF NOT EXISTS clients (
+        id                  TEXT PRIMARY KEY,
+        name                TEXT NOT NULL,
+        niche               TEXT NOT NULL,
+        portfolio_summary   TEXT NOT NULL DEFAULT '',
+        reference_pack_path TEXT NOT NULL DEFAULT '',
+        avatars             TEXT NOT NULL DEFAULT '[]',
+        brand_voice         TEXT NOT NULL DEFAULT '{}',
+        proof_bank          TEXT NOT NULL DEFAULT '[]',
+        offer_mechanics     TEXT NOT NULL DEFAULT '{}',
+        created_at          TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(): Promise<void> {

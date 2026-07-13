@@ -109,6 +109,14 @@ export interface ScriptBody {
   cta: string
 }
 
+export interface SectionNotes {
+  problem: string
+  story: string
+  solution: string
+  proof: string
+  cta: string
+}
+
 export interface Script {
   id: string
   ideaId: string
@@ -119,6 +127,8 @@ export interface Script {
   hook3: string
   body: ScriptBody
   productionNotes: string | null
+  sectionPacing: SectionNotes | null
+  sectionVisuals: SectionNotes | null
   status: ScriptStatus
   deliveredAt: string | null
   outputPath: string | null

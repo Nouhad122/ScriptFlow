@@ -14,6 +14,8 @@ import {
   Lightbulb,
   ShieldCheck,
   MousePointerClick,
+  Clock,
+  Camera,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
@@ -28,7 +30,7 @@ import { useApprovedIdeas } from '@/hooks/use-approved-ideas'
 import { useScripts } from '@/hooks/use-scripts'
 import { useScriptForIdea } from '@/hooks/use-script-for-idea'
 import { useGenerateScript } from '@/hooks/use-generate-script'
-import { MOCK_CLIENTS } from '@/data/mock-clients'
+import { useClients } from '@/hooks/use-clients'
 import type { Idea, Script } from '@/types'
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -41,6 +43,20 @@ function relativeTime(dateStr: string): string {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
   return `${Math.floor(hrs / 24)}d ago`
+}
+
+function spokenWordCount(script: Script): number {
+  return [script.hook1, script.body.problem, script.body.story,
+          script.body.solution, script.body.proof, script.body.cta]
+    .join(' ').trim().split(/\s+/).filter(Boolean).length
+}
+
+function durationStr(wordCount: number): string {
+  const secs = Math.round((wordCount / 140) * 60)
+  if (secs < 60) return `~${secs}s`
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return `~${m}m${s > 0 ? ` ${s}s` : ''}`
 }
 
 function buildScriptText(script: Script): string {
@@ -186,10 +202,14 @@ function ScriptSectionCard({
   label,
   icon: Icon,
   content,
+  pacing,
+  visual,
 }: {
   label: string
   icon: LucideIcon
   content: string
+  pacing?: string
+  visual?: string
 }) {
   return (
     <div className="rounded-lg border border-border bg-card">
@@ -204,6 +224,22 @@ function ScriptSectionCard({
       </div>
       <div className="px-4 py-4">
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{content}</p>
+        {(pacing || visual) && (
+          <div className="mt-3 space-y-1.5 border-t border-border/50 pt-3">
+            {pacing && (
+              <div className="flex items-start gap-1.5">
+                <Clock className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground">{pacing}</span>
+              </div>
+            )}
+            {visual && (
+              <div className="flex items-start gap-1.5">
+                <Camera className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground">{visual}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -212,6 +248,7 @@ function ScriptSectionCard({
 // ── Script viewer ─────────────────────────────────────────────────────────────
 
 function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
+  const wordCount = spokenWordCount(script)
   const hooksText = [
     `Hook 1: ${script.hook1}`,
     `Hook 2: ${script.hook2}`,
@@ -245,6 +282,11 @@ function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
           </span>
           <span>·</span>
           <span>{new Date(script.createdAt).toLocaleString()}</span>
+          <span>·</span>
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {durationStr(wordCount)} · {wordCount} words
+          </span>
           <StatusBadge status={script.status} />
         </div>
       </m.div>
@@ -276,7 +318,13 @@ function ScriptViewer({ idea, script }: { idea: Idea; script: Script }) {
       {/* Body sections */}
       {BODY_SECTIONS.map(({ key, label, icon }) => (
         <m.div key={key} variants={itemVariants}>
-          <ScriptSectionCard label={label} icon={icon} content={script.body[key]} />
+          <ScriptSectionCard
+            label={label}
+            icon={icon}
+            content={script.body[key]}
+            pacing={script.sectionPacing?.[key] ?? undefined}
+            visual={script.sectionVisuals?.[key] ?? undefined}
+          />
         </m.div>
       ))}
     </m.div>
@@ -323,15 +371,14 @@ function ScriptLoadingSkeleton() {
 }
 
 function NoScriptPanel({
-  idea,
   onGenerate,
   isGenerating,
+  clientExists,
 }: {
-  idea: Idea
   onGenerate: () => void
   isGenerating: boolean
+  clientExists: boolean
 }) {
-  const clientExists = MOCK_CLIENTS.some(c => c.id === idea.clientId)
 
   return (
     <div className="flex h-full items-center justify-center">
@@ -385,6 +432,7 @@ export function ContentStudioPage() {
   } = useApprovedIdeas()
 
   const { data: scripts = [] } = useScripts()
+  const { data: clients = [] } = useClients()
 
   const scriptQuery      = useScriptForIdea(selectedIdeaId)
   const generateMutation = useGenerateScript()
@@ -413,7 +461,7 @@ export function ContentStudioPage() {
 
   const handleGenerate = (idea: Idea) => {
     setSelectedIdeaId(idea.id)
-    const clientContext = MOCK_CLIENTS.find(c => c.id === idea.clientId)
+    const clientContext = clients.find(c => c.id === idea.clientId)
     if (!clientContext) return
     generateMutation.mutate({ ideaId: idea.id, clientContext })
   }
@@ -428,9 +476,9 @@ export function ContentStudioPage() {
     if (script === null) {
       return (
         <NoScriptPanel
-          idea={selectedIdea}
           onGenerate={() => handleGenerate(selectedIdea)}
           isGenerating={false}
+          clientExists={clients.some(c => c.id === selectedIdea.clientId)}
         />
       )
     }
@@ -511,7 +559,7 @@ export function ContentStudioPage() {
               const hasScript   = generatedIdeaIds.has(idea.id)
               const isGenerating =
                 generateMutation.isPending && generateMutation.variables?.ideaId === idea.id
-              const clientExists = MOCK_CLIENTS.some(c => c.id === idea.clientId)
+              const clientExists = clients.some(c => c.id === idea.clientId)
               const rec = idea.iceScore?.recommendation ?? null
 
               return (

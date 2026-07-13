@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { usePagination } from '@/hooks/use-pagination'
 import { Pagination } from '@/components/ui/pagination'
-import { CheckCircle2, XCircle, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
+import {
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
+  Loader2,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+} from 'lucide-react'
 import { m, AnimatePresence, useReducedMotion } from 'motion/react'
 import { animate } from 'motion'
 import { Button } from '@/components/ui/button'
@@ -12,7 +21,8 @@ import { containerVariants, itemVariants } from '@/lib/animations'
 import { useScripts } from '@/hooks/use-scripts'
 import { useReviewForScript } from '@/hooks/use-review-for-script'
 import { useRunQualityReview } from '@/hooks/use-run-quality-review'
-import { MOCK_CLIENTS } from '@/data/mock-clients'
+import { useRegenerateScript } from '@/hooks/use-regenerate-script'
+import { useClients } from '@/hooks/use-clients'
 import type { ScriptWithHook, QualityReview, QualityChecks, ScriptStatus } from '@/types'
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -27,10 +37,22 @@ function relativeTime(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-function scoreChipClass(score: number): string {
-  if (score >= 8) return 'bg-green-500/10 text-green-400 border-green-500/20'
-  if (score >= 5) return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-  return 'bg-red-500/10 text-red-400 border-red-500/20'
+function scoreColor(score: number): string {
+  if (score >= 7) return 'text-green-400'
+  if (score >= 5) return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+function scoreBarColor(score: number): string {
+  if (score >= 7) return 'bg-green-400'
+  if (score >= 5) return 'bg-yellow-400'
+  return 'bg-red-400'
+}
+
+function ringStrokeColor(score: number): string {
+  if (score >= 80) return '#4ade80'
+  if (score >= 65) return '#facc15'
+  return '#f87171'
 }
 
 // ── Animated score counter ────────────────────────────────────────────────────
@@ -51,6 +73,50 @@ function AnimatedScore({ value, className }: { value: number; className?: string
   }, [value, reduced])
 
   return <span ref={ref} className={className}>{value}</span>
+}
+
+// ── Score ring ────────────────────────────────────────────────────────────────
+
+function ScoreRing({ score }: { score: number }) {
+  const circleRef     = useRef<SVGCircleElement>(null)
+  const reduced       = useReducedMotion()
+  const radius        = 36
+  const circumference = 2 * Math.PI * radius
+  const targetOffset  = circumference - (score / 100) * circumference
+  const color         = ringStrokeColor(score)
+
+  useEffect(() => {
+    if (!circleRef.current) return
+    if (reduced) { circleRef.current.style.strokeDashoffset = String(targetOffset); return }
+    const ctrl = animate(circumference, targetOffset, {
+      duration: 1.1,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate(v) { if (circleRef.current) circleRef.current.style.strokeDashoffset = String(v) },
+    })
+    return () => ctrl.stop()
+  }, [score, reduced, circumference, targetOffset])
+
+  return (
+    <div className="relative flex shrink-0 items-center justify-center">
+      <svg width="88" height="88" viewBox="0 0 88 88" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="44" cy="44" r={radius} fill="none" strokeWidth="7" stroke="var(--border)" />
+        <circle
+          ref={circleRef}
+          cx="44" cy="44" r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <AnimatedScore value={score} className="text-2xl font-bold tabular-nums leading-none" />
+        <span className="text-[10px] text-muted-foreground">/ 100</span>
+      </div>
+    </div>
+  )
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -77,50 +143,203 @@ const CHECK_ENTRIES: [keyof QualityChecks, string][] = [
   ['structure',         'Structure'],
 ]
 
-// ── Check row ─────────────────────────────────────────────────────────────────
+// What each check evaluates — shown under the check label so the user knows the basis
+const CHECK_CRITERIA: Record<keyof QualityChecks, string> = {
+  hookStrength:      'Does Hook 1 make the target avatar stop scrolling in the first 3 seconds?',
+  problemClarity:    'Is the problem section specific enough that the viewer thinks "that\'s exactly my situation"?',
+  storyFlow:         'Does the story bridge from problem to solution without feeling forced or generic?',
+  solutionAlignment: 'Is the product introduced naturally — transformation promised without overselling?',
+  proofAccuracy:     'Are all cited results, numbers, and names traceable to the proof bank exactly as stated?',
+  ctaAlignment:      'Does the CTA match the approved action from offer mechanics and avoid generic phrases?',
+  brandVoice:        'Does the entire script sound like this specific client — not a generic coaching script?',
+  fabrication:       'Are there zero claims that cannot be verified against a specific proof bank entry?',
+  length:            'Is the spoken word count within the 100–220 word target for a 45–90 second video?',
+  structure:         'Does the script follow Problem → Story → Solution → Proof → CTA in the correct sequence?',
+}
 
-function CheckRow({ label, check }: { label: string; check: QualityChecks[keyof QualityChecks] }) {
-  const Icon = check.pass ? CheckCircle2 : XCircle
+// Returns the script section the agent was reading when it scored each criterion
+function getCheckExcerpt(key: keyof QualityChecks, script: ScriptWithHook): string | undefined {
+  switch (key) {
+    case 'hookStrength':      return script.hook1
+    case 'problemClarity':    return script.body.problem
+    case 'storyFlow':         return script.body.story
+    case 'solutionAlignment': return script.body.solution
+    case 'proofAccuracy':     return script.body.proof
+    case 'ctaAlignment':      return script.body.cta
+    case 'fabrication':       return script.body.proof
+    default:                  return undefined
+  }
+}
+
+// ── Check card ────────────────────────────────────────────────────────────────
+
+function CheckCard({
+  label,
+  criteria,
+  check,
+  excerpt,
+}: {
+  label: string
+  criteria: string
+  check: QualityChecks[keyof QualityChecks]
+  excerpt?: string
+}) {
   const isScored = 'score' in check
+  const score    = isScored ? (check as { score: number }).score : null
 
   return (
-    <div className="flex items-start gap-3 border-b border-border py-3 last:border-0">
-      <Icon
-        className={cn('mt-0.5 h-4 w-4 shrink-0', check.pass ? 'text-green-400' : 'text-red-400')}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium text-foreground">{label}</span>
-          {isScored ? (
-            <span
-              className={cn(
-                'shrink-0 rounded border px-1.5 py-0.5 text-xs font-bold',
-                scoreChipClass((check as { score: number }).score),
-              )}
-            >
-              {(check as { score: number }).score}/10
-            </span>
-          ) : (
-            <span
-              className={cn(
-                'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                check.pass ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400',
-              )}
-            >
-              {check.pass ? 'Pass' : 'Fail'}
-            </span>
-          )}
+    <div
+      className={cn(
+        'space-y-3 rounded-lg border p-4',
+        check.pass ? 'border-border bg-card' : 'border-red-500/20 bg-red-500/3',
+      )}
+    >
+      {/* Header: icon + label + score or pass badge */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {check.pass
+            ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
+            : <XCircle       className="h-4 w-4 shrink-0 text-red-400" />
+          }
+          <span className="text-sm font-semibold text-foreground">{label}</span>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{check.reason}</p>
+        {score !== null ? (
+          <span className={cn('shrink-0 text-sm font-bold tabular-nums', scoreColor(score))}>
+            {score}/10
+          </span>
+        ) : (
+          <span
+            className={cn(
+              'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
+              check.pass ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400',
+            )}
+          >
+            {check.pass ? 'Pass' : 'Fail'}
+          </span>
+        )}
       </div>
+
+      {/* Score bar */}
+      {score !== null && (
+        <div className="h-1 overflow-hidden rounded-full bg-border">
+          <m.div
+            className={cn('h-full rounded-full', scoreBarColor(score))}
+            initial={{ width: 0 }}
+            animate={{ width: `${(score / 10) * 100}%` }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </div>
+      )}
+
+      {/* What this criterion evaluates */}
+      <p className="text-[11px] italic leading-relaxed text-muted-foreground/60">{criteria}</p>
+
+      {/* Relevant script excerpt — what the agent was reading when it scored this */}
+      {excerpt && (
+        <blockquote className="border-l-2 border-border pl-3">
+          <p className="line-clamp-2 text-xs italic leading-relaxed text-foreground/50">
+            "{excerpt}"
+          </p>
+        </blockquote>
+      )}
+
+      {/* Agent's finding */}
+      <div className={cn('rounded-md p-3', check.pass ? 'bg-muted/40' : 'bg-red-500/5')}>
+        <p className="text-xs leading-relaxed text-muted-foreground">{check.reason}</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Collapsible script preview ────────────────────────────────────────────────
+
+const BODY_SECTION_LABELS: [keyof ScriptWithHook['body'], string][] = [
+  ['problem',  'Problem'],
+  ['story',    'Story'],
+  ['solution', 'Solution'],
+  ['proof',    'Proof'],
+  ['cta',      'Call to Action'],
+]
+
+function ScriptPreview({ script }: { script: ScriptWithHook }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <button
+        className="flex w-full items-center justify-between px-4 py-3"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Script Evaluated
+        </span>
+        {open
+          ? <ChevronUp   className="h-3.5 w-3.5 text-muted-foreground" />
+          : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        }
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <m.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-4 border-t border-border px-4 py-4">
+              {/* Hooks */}
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+                  Hook Variations
+                </p>
+                <div className="space-y-1.5">
+                  {[script.hook1, script.hook2, script.hook3].map((h, i) => (
+                    <div key={i} className="flex gap-2">
+                      <span className="mt-0.5 w-3 shrink-0 text-[10px] font-bold text-muted-foreground/40">
+                        {i + 1}
+                      </span>
+                      <p className="text-xs leading-relaxed text-foreground/70">{h}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Body sections */}
+              {BODY_SECTION_LABELS.map(([key, label]) => (
+                <div key={key}>
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+                    {label}
+                  </p>
+                  <p className="text-xs leading-relaxed text-foreground/70">{script.body[key]}</p>
+                </div>
+              ))}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
 // ── Review panel ──────────────────────────────────────────────────────────────
 
-function ReviewPanel({ review }: { review: QualityReview }) {
-  const isPassed = review.overallDecision === 'PASS'
+function ReviewPanel({
+  review,
+  script,
+  onRegenerate,
+  isRegenerating,
+}: {
+  review: QualityReview
+  script: ScriptWithHook
+  onRegenerate: () => void
+  isRegenerating: boolean
+}) {
+  const isPassed     = review.overallDecision === 'PASS'
+  const failedChecks = CHECK_ENTRIES.filter(([key]) => !review.checks[key].pass)
+  const passedChecks = CHECK_ENTRIES.filter(([key]) =>  review.checks[key].pass)
 
   return (
     <m.div
@@ -132,61 +351,107 @@ function ReviewPanel({ review }: { review: QualityReview }) {
       {/* Overall result */}
       <div
         className={cn(
-          'rounded-lg border p-4',
-          isPassed ? 'border-green-500/20 bg-green-500/5' : 'border-orange-500/20 bg-orange-500/5',
+          'rounded-lg border p-5',
+          isPassed ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5',
         )}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isPassed ? (
-              <CheckCircle2 className="h-5 w-5 text-green-400" />
-            ) : (
-              <XCircle className="h-5 w-5 text-orange-400" />
-            )}
-            <div>
-              <p className="text-sm font-semibold text-foreground">Quality Review</p>
-              <p className="text-xs text-muted-foreground">
-                {new Date(review.createdAt).toLocaleString()}
-              </p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className={cn('text-3xl font-bold', isPassed ? 'text-green-400' : 'text-orange-400')}>
-              <AnimatedScore value={review.overallScore} />
+        <div className="flex items-center gap-5">
+          <ScoreRing score={review.overallScore} />
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="text-base font-semibold leading-snug text-foreground">
+              {script.ideaHookLine}
             </p>
-            <p className="text-[10px] text-muted-foreground">/ 100</p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <StatusBadge status={review.overallDecision} />
+              <span className="text-xs text-muted-foreground">
+                {isPassed
+                  ? 'All 10 checks passed — ready for delivery.'
+                  : `${failedChecks.length} check${failedChecks.length !== 1 ? 's' : ''} failed — held for revision.`}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground/50">
+              Reviewed {relativeTime(review.createdAt)}
+            </p>
+            {!isPassed && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-fit gap-1.5"
+                disabled={isRegenerating}
+                onClick={onRegenerate}
+              >
+                {isRegenerating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                {isRegenerating ? 'Regenerating…' : 'Regenerate Script'}
+              </Button>
+            )}
           </div>
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <StatusBadge status={review.overallDecision} />
-          <span className="text-xs text-muted-foreground">
-            {isPassed
-              ? 'Script passed quality review and is ready for delivery.'
-              : 'Script held — one or more checks failed or scored below threshold.'}
-          </span>
         </div>
       </div>
 
-      {/* Staggered check list */}
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Quality Checks
-          </p>
+      {/* Collapsible script — shows exactly what the agent evaluated */}
+      <ScriptPreview script={script} />
+
+      {/* Failed checks */}
+      {failedChecks.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-4 w-4 text-red-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-red-400">
+              {failedChecks.length} Failed {failedChecks.length === 1 ? 'Check' : 'Checks'}
+            </span>
+          </div>
+          <m.div
+            className="space-y-3"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {failedChecks.map(([key, label]) => (
+              <m.div key={key} variants={itemVariants}>
+                <CheckCard
+                  label={label}
+                  criteria={CHECK_CRITERIA[key]}
+                  check={review.checks[key]}
+                  excerpt={getCheckExcerpt(key, script)}
+                />
+              </m.div>
+            ))}
+          </m.div>
         </div>
-        <m.div
-          className="px-4"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {CHECK_ENTRIES.map(([key, label]) => (
-            <m.div key={key} variants={itemVariants}>
-              <CheckRow label={label} check={review.checks[key]} />
-            </m.div>
-          ))}
-        </m.div>
-      </div>
+      )}
+
+      {/* Passed checks */}
+      {passedChecks.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-400" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {passedChecks.length} Passed {passedChecks.length === 1 ? 'Check' : 'Checks'}
+            </span>
+          </div>
+          <m.div
+            className="space-y-3"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {passedChecks.map(([key, label]) => (
+              <m.div key={key} variants={itemVariants}>
+                <CheckCard
+                  label={label}
+                  criteria={CHECK_CRITERIA[key]}
+                  check={review.checks[key]}
+                  excerpt={getCheckExcerpt(key, script)}
+                />
+              </m.div>
+            ))}
+          </m.div>
+        </div>
+      )}
     </m.div>
   )
 }
@@ -218,36 +483,35 @@ function ReviewSkeleton() {
   return (
     <div className="space-y-4 p-6">
       <Skeleton className="h-28 rounded-lg" />
-      <div className="rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-4 py-3">
-          <Skeleton className="h-3 w-24" />
-        </div>
-        <div className="px-4">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="flex gap-3 border-b border-border py-3 last:border-0">
-              <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded-full" />
-              <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-3.5 w-2/5" />
-                <Skeleton className="h-3 w-full" />
-              </div>
+      <Skeleton className="h-12 rounded-lg" />
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-32" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-10" />
             </div>
-          ))}
-        </div>
+            <Skeleton className="h-1 w-full rounded-full" />
+            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
 function PendingReviewPanel({
-  script,
   onRun,
   isRunning,
+  clientExists,
 }: {
-  script: ScriptWithHook
   onRun: () => void
   isRunning: boolean
+  clientExists: boolean
 }) {
-  const clientExists = MOCK_CLIENTS.some(c => c.id === script.clientId)
 
   return (
     <div className="flex h-full items-center justify-center">
@@ -299,8 +563,10 @@ export function QualityCenterPage() {
     refetch: refetchScripts,
   } = useScripts()
 
-  const reviewQuery    = useReviewForScript(selectedScriptId)
-  const reviewMutation = useRunQualityReview()
+  const { data: clients = [] } = useClients()
+  const reviewQuery        = useReviewForScript(selectedScriptId)
+  const reviewMutation     = useRunQualityReview()
+  const regenerateMutation = useRegenerateScript()
 
   const selectedScript = scripts.find(s => s.id === selectedScriptId) ?? null
 
@@ -321,7 +587,7 @@ export function QualityCenterPage() {
   useEffect(() => { setPage(1) }, [statusFilter, setPage])
 
   const handleRunReview = (script: ScriptWithHook) => {
-    const clientContext = MOCK_CLIENTS.find(c => c.id === script.clientId)
+    const clientContext = clients.find(c => c.id === script.clientId)
     if (!clientContext) return
     reviewMutation.mutate({ scriptId: script.id, clientContext })
   }
@@ -336,9 +602,9 @@ export function QualityCenterPage() {
     if (!review && selectedScript.status === 'pending_review') {
       return (
         <PendingReviewPanel
-          script={selectedScript}
           onRun={() => handleRunReview(selectedScript)}
           isRunning={false}
+          clientExists={clients.some(c => c.id === selectedScript.clientId)}
         />
       )
     }
@@ -353,7 +619,24 @@ export function QualityCenterPage() {
         </div>
       )
     }
-    return <ReviewPanel review={review} />
+    return (
+      <ReviewPanel
+        review={review}
+        script={selectedScript}
+        isRegenerating={
+          regenerateMutation.isPending &&
+          regenerateMutation.variables?.ideaId === selectedScript.ideaId
+        }
+        onRegenerate={() => {
+          const clientContext = clients.find(c => c.id === selectedScript.clientId)
+          if (!clientContext) return
+          regenerateMutation.mutate(
+            { ideaId: selectedScript.ideaId, clientContext },
+            { onSuccess: (newScript) => setSelectedScriptId(newScript.id) },
+          )
+        }}
+      />
+    )
   })()
 
   return (
@@ -470,6 +753,7 @@ export function QualityCenterPage() {
               )
             })}
           </div>
+
           <Pagination
             compact
             page={page}
@@ -480,7 +764,7 @@ export function QualityCenterPage() {
           />
         </div>
 
-        {/* ── Right panel — transitions between states ───────────────── */}
+        {/* ── Right panel ───────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
             <m.div

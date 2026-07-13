@@ -52,6 +52,8 @@ const testScript: Script = {
     cta: "Comment FREEDOM and I'll send you the exact framework.",
   },
   productionNotes: 'Shoot at desk. Natural lighting.',
+  sectionPacing: null,
+  sectionVisuals: null,
   status: 'pending_review',
   deliveredAt: null,
   outputPath: null,

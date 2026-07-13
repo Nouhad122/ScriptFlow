@@ -23,8 +23,21 @@
  */
 
 import { getDb } from './connection';
-import type { Script, ScriptStatus } from '../types';
+import type { Script, ScriptStatus, SectionNotes } from '../types';
 import type { Row } from '@libsql/client';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function parseJsonColumn<T>(value: unknown): T | null {
+  if (!value || typeof value !== 'string') return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Row → Script mapping
@@ -47,6 +60,8 @@ function rowToScript(row: Row): Script {
       cta: row['body_cta'] as string,
     },
     productionNotes: (row['production_notes'] as string | null) ?? null,
+    sectionPacing:   parseJsonColumn<SectionNotes>(row['section_pacing']),
+    sectionVisuals:  parseJsonColumn<SectionNotes>(row['section_visuals']),
     status: row['status'] as ScriptStatus,
     deliveredAt: row['delivered_at'] ? new Date(row['delivered_at'] as string) : null,
     outputPath: (row['output_path'] as string | null) ?? null,
@@ -63,8 +78,9 @@ const INSERT_SQL = `
     id, idea_id, client_id, pipeline_run_id,
     hook1, hook2, hook3,
     body_problem, body_story, body_solution, body_proof, body_cta,
-    production_notes, status, delivered_at, output_path, created_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    production_notes, section_pacing, section_visuals,
+    status, delivered_at, output_path, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 function scriptToArgs(script: Script): (string | null)[] {
@@ -82,6 +98,8 @@ function scriptToArgs(script: Script): (string | null)[] {
     script.body.proof,
     script.body.cta,
     script.productionNotes,
+    script.sectionPacing  ? JSON.stringify(script.sectionPacing)  : null,
+    script.sectionVisuals ? JSON.stringify(script.sectionVisuals) : null,
     script.status,
     script.deliveredAt ? script.deliveredAt.toISOString() : null,
     script.outputPath,
@@ -148,6 +166,15 @@ export async function getAllScripts(): Promise<(Script & { ideaHookLine: string 
     ...rowToScript(row),
     ideaHookLine: row['idea_hook_line'] as string,
   }));
+}
+
+/**
+ * Deletes the script for a given idea id.
+ * Called before regeneration to clear the one-script-per-idea constraint.
+ */
+export async function deleteScriptByIdeaId(ideaId: string): Promise<void> {
+  const db = getDb();
+  await db.execute({ sql: 'DELETE FROM scripts WHERE idea_id = ?', args: [ideaId] });
 }
 
 /**

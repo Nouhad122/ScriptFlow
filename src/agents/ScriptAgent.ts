@@ -24,7 +24,7 @@
 
 import { randomUUID } from 'crypto';
 import type { IScriptAgent } from './interfaces';
-import type { AgentResult, ClientContext, Idea, Script } from '../types';
+import type { AgentResult, ClientContext, Idea, Script, SectionNotes } from '../types';
 import type { AIService } from '../services/AIService';
 import { type ScriptAgentConfig, scriptAgentConfig } from '../config/script.config';
 import { buildScriptPrompt } from '../prompts/script.prompt';
@@ -47,6 +47,8 @@ interface RawScriptFromAI {
   hook3: string;
   body: RawScriptBody;
   productionNotes?: string | null;
+  sectionPacing?: SectionNotes | null;
+  sectionVisuals?: SectionNotes | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +86,21 @@ function validateRawScript(raw: unknown): RawScriptFromAI {
   assertNonEmptyString(body['proof'], 'body.proof');
   assertNonEmptyString(body['cta'], 'body.cta');
 
+  // sectionPacing and sectionVisuals are optional but validated when present.
+  const SECTION_KEYS = ['problem', 'story', 'solution', 'proof', 'cta'] as const;
+  for (const field of ['sectionPacing', 'sectionVisuals'] as const) {
+    const obj = r[field];
+    if (obj != null) {
+      if (typeof obj !== 'object' || Array.isArray(obj)) {
+        throw new Error(`"${field}" must be an object if present`);
+      }
+      const o = obj as Record<string, unknown>;
+      for (const key of SECTION_KEYS) {
+        assertNonEmptyString(o[key], `${field}.${key}`);
+      }
+    }
+  }
+
   return r as unknown as RawScriptFromAI;
 }
 
@@ -108,6 +125,8 @@ function mapToScript(raw: RawScriptFromAI, idea: Idea): Script {
       cta: raw.body.cta.trim(),
     },
     productionNotes: raw.productionNotes ? raw.productionNotes.trim() : null,
+    sectionPacing:   raw.sectionPacing  ?? null,
+    sectionVisuals:  raw.sectionVisuals ?? null,
     status: 'pending_review',
     deliveredAt: null,
     outputPath: null,
@@ -131,7 +150,8 @@ export class ScriptAgent implements IScriptAgent {
   async generateScript(
     idea: Idea,
     context: ClientContext,
-    memoryContext: Script[]
+    memoryContext: Script[],
+    qualityFeedback?: string
   ): Promise<AgentResult<Script>> {
     const start = Date.now();
 
@@ -151,7 +171,7 @@ export class ScriptAgent implements IScriptAgent {
     }
 
     try {
-      const prompt = buildScriptPrompt(idea, context, memoryContext);
+      const prompt = buildScriptPrompt(idea, context, memoryContext, qualityFeedback);
       const raw = await this.ai.generateStructured<RawScriptFromAI>(prompt);
       const validated = validateRawScript(raw);
       const script = mapToScript(validated, idea);

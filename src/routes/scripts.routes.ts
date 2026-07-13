@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getAllScripts,
   generateScript,
+  regenerateScript,
   getScriptForIdea,
   getReviewForScript,
 } from '../controllers/scripts.controller';
@@ -21,7 +22,10 @@ router.get('/:scriptId/review', getReviewForScript);
 // POST /api/scripts/generate          — generate a script for one approved idea
 router.post('/generate', generateScript);
 
-// POST /api/scripts/:scriptId/review  — run quality review on a generated script
+// POST /api/scripts/:scriptId/review     — run quality review on a generated script
 router.post('/:scriptId/review', reviewScript);
+
+// POST /api/scripts/:ideaId/regenerate  — delete held script and regenerate with quality feedback
+router.post('/:ideaId/regenerate', regenerateScript);
 
 export default router;

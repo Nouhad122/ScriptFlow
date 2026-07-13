@@ -24,6 +24,7 @@
  */
 
 import type { ClientContext, Idea, Script } from '../types';
+import { QUALITY_CALIBRATION } from './quality.calibration';
 
 export function buildQualityReviewPrompt(
   script: Script,
@@ -54,10 +55,12 @@ export function buildQualityReviewPrompt(
     .join('\n');
 
   return `You are a senior content strategist and quality director for a high-ticket coaching brand.
-Your task: evaluate the script below against 10 quality criteria.
+Your task: evaluate this script critically and honestly against 10 quality criteria.
 
+Do not default to generous scores. Do not default to harsh ones either.
+Score what is actually on the page — not what you assume was intended.
 You EVALUATE ONLY. Do not rewrite, edit, or suggest alternative wording.
-Your output is a structured quality assessment used to decide whether this script is ready to deliver to the client.
+${QUALITY_CALIBRATION}
 
 ━━━ CLIENT REFERENCE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -159,10 +162,11 @@ use your judgment against the specific rule defined.
 ━━━ SCORING RULES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 - overallScore: your holistic assessment on a 0–100 scale. This is your professional judgment,
-  not a mathematical average. Consider which criteria are most critical for this specific content.
+  not a mathematical average. A competent AI script that correctly addresses the brief typically
+  scores 65–82. Scores above 88 indicate genuinely exceptional quality and should be rare.
 - overallDecision: "PASS" if ALL 10 checks have pass:true. "HOLD" if ANY check has pass:false.
 - Every reason MUST be specific — reference actual text from the script or a specific proof bank
-  entry. Generic reasons like "this is good" are not acceptable.
+  entry. Generic reasons like "this is good" or "well written" are not acceptable.
 
 ━━━ RESPONSE FORMAT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

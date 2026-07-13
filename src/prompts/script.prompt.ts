@@ -32,7 +32,8 @@ import type { ClientContext, Idea, Script } from '../types';
 export function buildScriptPrompt(
   idea: Idea,
   context: ClientContext,
-  memoryContext: Script[]
+  memoryContext: Script[],
+  qualityFeedback?: string
 ): string {
   const avatarsBlock = (context.avatars ?? [])
     .map(
@@ -113,7 +114,16 @@ ${memoryBlock ? `\n── PREVIOUSLY APPROVED SCRIPTS (avoid repeating these pat
 
 ${ideaBlock}
 
-━━━ SECTION GUIDELINES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${qualityFeedback ? `━━━ QUALITY REVIEW FEEDBACK — previous version was rejected ━━━━━━
+
+A previous version of this script failed the quality review agent.
+You MUST address every issue listed below. Do not repeat the same mistakes.
+
+${qualityFeedback}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+` : ''}━━━ SECTION GUIDELINES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 HOOK 1, 2, 3  (15–25 words each — three distinct opening lines)
   The first 1–2 spoken sentences. Must make the viewer stop scrolling immediately.
@@ -150,6 +160,22 @@ PRODUCTION NOTES  (optional)
   Brief filming or delivery directions only (e.g. "Speak to camera, no B-roll needed").
   Omit if the script is self-explanatory. Return null if no notes are needed.
 
+SECTION PACING  (one sentence per body section)
+  How the speaker should deliver each section: speed, energy level, and emotional tone.
+  Be specific to the angle of this idea — not generic advice.
+  Examples:
+    "Slow and empathetic — let the pain settle before moving on."
+    "Pick up pace and confidence as you move through the client results."
+    "Drop to a quieter, more personal tone — this is the story, not the pitch."
+
+SECTION VISUALS  (one sentence per body section)
+  What the camera shows or what appears on screen during each section.
+  Match the creative type: ${idea.creativeType} — tailor every cue to this format.
+  Examples:
+    "Speaker direct to camera — uncut, no B-roll, raw eye contact."
+    "Cut to B-roll: time-lapse of a packed calendar or late-night desk scene."
+    "On-screen text overlay: the specific result from the proof bank."
+
 ━━━ RESPONSE FORMAT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Return ONLY valid JSON. No markdown fences. No explanation. No extra fields.
@@ -166,6 +192,20 @@ Start with { and end with }.
     "proof": "<specific proof from the proof bank only>",
     "cta": "<clear, natural call to action>"
   },
-  "productionNotes": "<brief filming notes or null>"
+  "productionNotes": "<brief filming notes or null>",
+  "sectionPacing": {
+    "problem": "<one sentence: delivery speed and emotional tone for the problem section>",
+    "story": "<one sentence: pacing and energy for the story section>",
+    "solution": "<one sentence: pace for the solution reveal>",
+    "proof": "<one sentence: delivery energy for citing the proof>",
+    "cta": "<one sentence: energy and intention for the call to action>"
+  },
+  "sectionVisuals": {
+    "problem": "<one sentence: what the camera shows or what is on screen during the problem section>",
+    "story": "<one sentence: visual direction for the story section>",
+    "solution": "<one sentence: visual direction for the solution reveal>",
+    "proof": "<one sentence: visual direction while citing the proof>",
+    "cta": "<one sentence: visual direction for the call to action>"
+  }
 }`;
 }

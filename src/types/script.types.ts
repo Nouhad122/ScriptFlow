@@ -24,6 +24,16 @@
 
 export type ScriptStatus = 'pending_review' | 'passed' | 'held';
 
+// Per-section delivery and visual notes — one entry per body section.
+// Null for scripts generated before this feature was added.
+export interface SectionNotes {
+  problem: string;
+  story: string;
+  solution: string;
+  proof: string;
+  cta: string;
+}
+
 export interface ScriptBody {
   problem: string; // the pain/problem the idea addresses — makes the viewer feel seen
   story: string; // narrative bridge from problem to solution — creates emotional connection
@@ -48,6 +58,10 @@ export interface Script {
 
   // Optional production notes — filming/delivery direction, kept out of spoken content
   productionNotes: string | null;
+
+  // Per-section delivery cues and visual directions (null on pre-feature scripts)
+  sectionPacing: SectionNotes | null;
+  sectionVisuals: SectionNotes | null;
 
   status: ScriptStatus;
   deliveredAt: Date | null;

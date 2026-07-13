@@ -6,6 +6,7 @@ import {
   FileText,
   ShieldCheck,
   History,
+  Users,
   Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,7 @@ const mainNav: NavItem[] = [
   { to: '/content',   icon: FileText,        label: 'Content Studio' },
   { to: '/quality',   icon: ShieldCheck,     label: 'Quality Center' },
   { to: '/history',   icon: History,         label: 'History' },
+  { to: '/clients',   icon: Users,           label: 'Clients' },
 ]
 
 function NavItemLink({ item }: { item: NavItem }) {

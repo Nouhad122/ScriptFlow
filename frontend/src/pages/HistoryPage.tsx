@@ -20,8 +20,8 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { cn } from '@/lib/utils'
 import { slideFromRightVariants, backdropVariants } from '@/lib/animations'
 import { usePipelineHistory } from '@/hooks/use-pipeline-history'
-import { MOCK_CLIENTS } from '@/data/mock-clients'
-import type { PipelineRunRecord, PipelineAnalytics, PipelineStatus } from '@/types'
+import { useClients } from '@/hooks/use-clients'
+import type { ClientContext, PipelineRunRecord, PipelineAnalytics, PipelineStatus } from '@/types'
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -51,8 +51,8 @@ function relativeTime(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-function clientName(clientId: string): string {
-  return MOCK_CLIENTS.find(c => c.id === clientId)?.name ?? clientId
+function clientName(clientId: string, clients: ClientContext[]): string {
+  return clients.find(c => c.id === clientId)?.name ?? clientId
 }
 
 function shortenId(id: string): string {
@@ -231,7 +231,7 @@ function TimelineStepRow({ step, isLast }: { step: TimelineStep; isLast: boolean
   )
 }
 
-function RunDrawer({ run, onClose }: { run: PipelineRunRecord; onClose: () => void }) {
+function RunDrawer({ run, clientDisplayName, onClose }: { run: PipelineRunRecord; clientDisplayName: string; onClose: () => void }) {
   const steps      = buildTimeline(run)
   const hasTimings = run.totalMs !== null
 
@@ -264,7 +264,7 @@ function RunDrawer({ run, onClose }: { run: PipelineRunRecord; onClose: () => vo
               <StatusBadge status={run.status} />
               <span className="font-mono text-xs text-muted-foreground">{shortenId(run.id)}…</span>
             </div>
-            <p className="text-base font-semibold text-foreground">{clientName(run.clientId)}</p>
+            <p className="text-base font-semibold text-foreground">{clientDisplayName}</p>
             <p className="text-xs text-muted-foreground">
               {formatDateTime(run.startedAt)} · {formatDuration(run.totalMs)}
             </p>
@@ -359,6 +359,7 @@ export function HistoryPage() {
   const [sortOpen, setSortOpen]           = useState(false)
 
   const { data, isLoading, isError, refetch } = usePipelineHistory()
+  const { data: clients = [] } = useClients()
 
   const runs      = data?.runs      ?? []
   const analytics = data?.analytics ?? null
@@ -393,7 +394,7 @@ export function HistoryPage() {
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(
-        r => r.id.toLowerCase().includes(q) || clientName(r.clientId).toLowerCase().includes(q),
+        r => r.id.toLowerCase().includes(q) || clientName(r.clientId, clients).toLowerCase().includes(q),
       )
     }
 
@@ -599,7 +600,7 @@ export function HistoryPage() {
                   <span className="font-mono text-xs text-foreground">{shortenId(run.id)}…</span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-foreground">{clientName(run.clientId)}</span>
+                  <span className="text-foreground">{clientName(run.clientId, clients)}</span>
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-muted-foreground" title={formatDateTime(run.startedAt)}>
@@ -643,6 +644,7 @@ export function HistoryPage() {
           <RunDrawer
             key={selectedRun.id}
             run={selectedRun}
+            clientDisplayName={clientName(selectedRun.clientId, clients)}
             onClose={() => setSelectedRunId(null)}
           />
         )}

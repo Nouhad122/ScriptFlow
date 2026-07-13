@@ -35,6 +35,17 @@ export async function getAllScripts(): Promise<ScriptWithHook[]> {
   return data.scripts
 }
 
+export async function regenerateScript(
+  ideaId: string,
+  clientContext: ClientContext,
+): Promise<Script> {
+  const { data } = await apiClient.post<GenerateScriptResponse>(
+    `/api/scripts/${ideaId}/regenerate`,
+    { clientContext },
+  )
+  return data.script
+}
+
 export async function getScriptForIdea(ideaId: string): Promise<Script | null> {
   try {
     const { data } = await apiClient.get<ScriptForIdeaResponse>(

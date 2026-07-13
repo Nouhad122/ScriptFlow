@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils'
 import { containerVariants, itemVariants } from '@/lib/animations'
 import { useRunPipeline } from '@/hooks/use-run-pipeline'
 import { PipelineError } from '@/services/pipeline.service'
-import { MOCK_CLIENTS } from '@/data/mock-clients'
+import { useClients } from '@/hooks/use-clients'
 import { MemoryExplorer } from '@/components/MemoryExplorer'
 
 // ── Stage definitions ─────────────────────────────────────────────────────────
@@ -329,8 +329,9 @@ export function AutomationPage() {
   const [activeStageIdx, setActiveStageIdx] = useState(0)
   const mutation = useRunPipeline()
   const navigate = useNavigate()
+  const { data: clients = [], isLoading: clientsLoading } = useClients()
 
-  const selectedClient = MOCK_CLIENTS.find((c) => c.id === selectedClientId) ?? null
+  const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null
 
   useEffect(() => {
     if (!mutation.isPending) return
@@ -402,11 +403,17 @@ export function AutomationPage() {
                     <SelectValue placeholder="Select a client…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_CLIENTS.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
+                    {clientsLoading ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</div>
+                    ) : clients.length === 0 ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">No clients yet. Add one in Clients.</div>
+                    ) : (
+                      clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 {selectedClient && (

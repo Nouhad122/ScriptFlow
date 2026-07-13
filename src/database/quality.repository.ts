@@ -73,6 +73,15 @@ export async function saveReview(review: QualityReview): Promise<void> {
 }
 
 /**
+ * Deletes the quality review for a given script id.
+ * Called before script regeneration to remove the stale review for the old script.
+ */
+export async function deleteReviewByScriptId(scriptId: string): Promise<void> {
+  const db = getDb();
+  await db.execute({ sql: 'DELETE FROM quality_reviews WHERE script_id = ?', args: [scriptId] });
+}
+
+/**
  * Returns the most recent quality review for a given script id, or null if none exists.
  */
 export async function getReviewByScriptId(scriptId: string): Promise<QualityReview | null> {

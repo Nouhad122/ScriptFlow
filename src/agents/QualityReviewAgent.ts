@@ -92,7 +92,7 @@ function validateScoreCheck(raw: RawScoreCheck | undefined, name: string): Quali
     throw new Error(`Quality check "${name}".reason is missing or empty`);
   }
 
-  // Enforce score/pass consistency: score ≤ 5 must have pass:false
+  // Enforce score/pass consistency: score ≤ 5 must have pass:false (threshold is 6)
   const numScore = score as number;
   if (numScore <= 5 && raw.pass === true) {
     throw new Error(

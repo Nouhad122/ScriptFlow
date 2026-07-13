@@ -7,6 +7,7 @@ import { ContentStudioPage } from '@/pages/ContentStudioPage'
 import { QualityCenterPage } from '@/pages/QualityCenterPage'
 import { HistoryPage } from '@/pages/HistoryPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { ClientsPage } from '@/pages/ClientsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: 'content',      element: <ContentStudioPage /> },
       { path: 'quality',      element: <QualityCenterPage /> },
       { path: 'history',      element: <HistoryPage /> },
+      { path: 'clients',      element: <ClientsPage /> },
       { path: 'settings',     element: <SettingsPage /> },
       { path: '*',            element: <NotFoundPage /> },
     ],

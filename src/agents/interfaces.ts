@@ -44,7 +44,8 @@ export interface IScriptAgent {
   generateScript(
     idea: Idea,
     context: ClientContext,
-    memoryContext: Script[]
+    memoryContext: Script[],
+    qualityFeedback?: string
   ): Promise<AgentResult<Script>>;
 }
 
