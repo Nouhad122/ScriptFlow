@@ -69,10 +69,26 @@ interface RawQualityReview {
 }
 
 // ---------------------------------------------------------------------------
+// Per-criterion pass thresholds
+// hookStrength requires 7+ to pass — a competent hook (6) is not scroll-stopping.
+// All other scored criteria use the standard threshold of 6.
+// ---------------------------------------------------------------------------
+
+const SCORE_PASS_THRESHOLD: Partial<Record<keyof QualityChecks, number>> = {
+  hookStrength: 7,
+};
+
+const DEFAULT_PASS_THRESHOLD = 6;
+
+// ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-function validateScoreCheck(raw: RawScoreCheck | undefined, name: string): QualityScoreCheck {
+function validateScoreCheck(
+  raw: RawScoreCheck | undefined,
+  name: string,
+  key: keyof QualityChecks,
+): QualityScoreCheck {
   if (!raw || typeof raw !== 'object') {
     throw new Error(`Quality check "${name}" is missing from the AI response`);
   }
@@ -92,11 +108,13 @@ function validateScoreCheck(raw: RawScoreCheck | undefined, name: string): Quali
     throw new Error(`Quality check "${name}".reason is missing or empty`);
   }
 
-  // Enforce score/pass consistency: score ≤ 5 must have pass:false (threshold is 6)
   const numScore = score as number;
-  if (numScore <= 5 && raw.pass === true) {
+  const threshold = SCORE_PASS_THRESHOLD[key] ?? DEFAULT_PASS_THRESHOLD;
+
+  // Enforce score/pass consistency against this criterion's threshold.
+  if (numScore < threshold && raw.pass === true) {
     throw new Error(
-      `Quality check "${name}" has score ${numScore} (≤5) but pass:true — these are contradictory`
+      `Quality check "${name}" has score ${numScore} (<${threshold}) but pass:true — these are contradictory`
     );
   }
 
@@ -128,16 +146,16 @@ function validateBooleanCheck(raw: RawBooleanCheck | undefined, name: string): Q
 
 function validateAndMapChecks(raw: RawChecks): QualityChecks {
   return {
-    hookStrength: validateScoreCheck(raw.hookStrength, 'hookStrength'),
-    problemClarity: validateScoreCheck(raw.problemClarity, 'problemClarity'),
-    storyFlow: validateScoreCheck(raw.storyFlow, 'storyFlow'),
-    solutionAlignment: validateScoreCheck(raw.solutionAlignment, 'solutionAlignment'),
-    proofAccuracy: validateScoreCheck(raw.proofAccuracy, 'proofAccuracy'),
-    ctaAlignment: validateScoreCheck(raw.ctaAlignment, 'ctaAlignment'),
-    brandVoice: validateScoreCheck(raw.brandVoice, 'brandVoice'),
-    fabrication: validateBooleanCheck(raw.fabrication, 'fabrication'),
-    length: validateBooleanCheck(raw.length, 'length'),
-    structure: validateBooleanCheck(raw.structure, 'structure'),
+    hookStrength:      validateScoreCheck(raw.hookStrength,      'hookStrength',      'hookStrength'),
+    problemClarity:    validateScoreCheck(raw.problemClarity,    'problemClarity',    'problemClarity'),
+    storyFlow:         validateScoreCheck(raw.storyFlow,         'storyFlow',         'storyFlow'),
+    solutionAlignment: validateScoreCheck(raw.solutionAlignment, 'solutionAlignment', 'solutionAlignment'),
+    proofAccuracy:     validateScoreCheck(raw.proofAccuracy,     'proofAccuracy',     'proofAccuracy'),
+    ctaAlignment:      validateScoreCheck(raw.ctaAlignment,      'ctaAlignment',      'ctaAlignment'),
+    brandVoice:        validateScoreCheck(raw.brandVoice,        'brandVoice',        'brandVoice'),
+    fabrication:       validateBooleanCheck(raw.fabrication,     'fabrication'),
+    length:            validateBooleanCheck(raw.length,          'length'),
+    structure:         validateBooleanCheck(raw.structure,       'structure'),
   };
 }
 

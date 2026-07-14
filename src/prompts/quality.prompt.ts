@@ -103,7 +103,12 @@ use your judgment against the specific rule defined.
 1. hookStrength — Does Hook 1 make the target avatar stop scrolling in the first 3 seconds?
    Evaluate: pattern interrupt, emotional relevance to "${idea.targetPain}", immediate engagement.
    Is the hook directly tied to the approved angle: "${idea.angle}"?
-   Score 1–5 = pass:false. Score 6–10 = pass:true.
+   A hook that merely identifies the audience, states a pain, or uses a familiar "did you know /
+   here's why / most people don't know" formula scores 5–6. It is competent, not compelling.
+   Only award 7+ for a genuine pattern interrupt: a reframe that challenges an assumption the
+   target avatar holds, a scene so specific the viewer recognises themselves before they can scroll,
+   or a claim that creates urgency the viewer cannot defer. A score of 6 does NOT pass.
+   Score 1–6 = pass:false. Score 7–10 = pass:true.
 
 2. problemClarity — Is the problem section clear and specific to the target avatar?
    Evaluate: does the viewer feel seen? Is "${idea.targetPain}" addressed directly?

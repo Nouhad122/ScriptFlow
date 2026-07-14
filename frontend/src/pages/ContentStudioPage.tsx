@@ -434,7 +434,6 @@ export function ContentStudioPage() {
   const { data: scripts = [] } = useScripts()
   const { data: clients = [] } = useClients()
 
-  const scriptQuery      = useScriptForIdea(selectedIdeaId)
   const generateMutation = useGenerateScript()
 
   const selectedIdea = approvedIdeas.find(i => i.id === selectedIdeaId) ?? null
@@ -443,6 +442,9 @@ export function ContentStudioPage() {
     () => new Set(scripts.map(s => s.ideaId)),
     [scripts],
   )
+
+  const hasScriptAlready = selectedIdeaId ? generatedIdeaIds.has(selectedIdeaId) : false
+  const scriptQuery      = useScriptForIdea(hasScriptAlready ? selectedIdeaId : null)
 
   const filteredIdeas = useMemo(() => {
     if (!search.trim()) return approvedIdeas
@@ -563,13 +565,16 @@ export function ContentStudioPage() {
               const rec = idea.iceScore?.recommendation ?? null
 
               return (
-                <button
+                <div
                   key={idea.id}
+                  role="button"
+                  tabIndex={0}
                   className={cn(
-                    'w-full border-b border-border border-l-2 border-l-transparent px-4 py-3 text-left transition-colors hover:bg-muted/40',
+                    'w-full cursor-pointer border-b border-border border-l-2 border-l-transparent px-4 py-3 text-left transition-colors hover:bg-muted/40',
                     isSelected && 'bg-primary/5 border-l-primary',
                   )}
                   onClick={() => handleSelect(idea)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleSelect(idea) }}
                 >
                   <p className="mb-1.5 line-clamp-2 text-sm font-medium leading-snug text-foreground">
                     {idea.hookLine}
@@ -604,7 +609,7 @@ export function ContentStudioPage() {
                       <><Sparkles className="h-3 w-3" />Generate Script</>
                     )}
                   </Button>
-                </button>
+                </div>
               )
             })}
           </div>
