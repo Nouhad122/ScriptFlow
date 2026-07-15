@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Plus,
   Trash2,
@@ -57,6 +57,160 @@ function clientToForm(c: ClientContext): ClientForm {
     proofBank: c.proofBank.map(p => ({ ...p })),
     offerMechanics: { ...c.offerMechanics, keyBenefits: [...c.offerMechanics.keyBenefits] },
   }
+}
+
+// ── Preset options ─────────────────────────────────────────────────────────────
+
+const NICHE_OPTIONS = [
+  'High-Ticket Business Coaching',
+  'Fitness & Health Coaching',
+  'Life Coaching & Mindset',
+  'Real Estate Investing',
+  'Online Courses & Education',
+  'E-commerce & Retail',
+  'Financial Coaching',
+  'Career & Executive Coaching',
+  'Relationship Coaching',
+  'Social Media Marketing Agency',
+  'Digital Marketing',
+  'Sales Coaching',
+  'Leadership & Management Coaching',
+  'Parenting & Family Coaching',
+]
+
+const TONE_OPTIONS = [
+  'Direct & No-Nonsense',
+  'Conversational',
+  'Authoritative',
+  'Warm & Empathetic',
+  'Bold & Challenging',
+  'Inspirational',
+  'Educational',
+  'Professional & Polished',
+  'Energetic & Motivational',
+  'Calm & Measured',
+]
+
+const SPEAKING_STYLE_OPTIONS = [
+  'Conversational Authority',
+  'Storytelling & Narrative',
+  'Data-Driven',
+  'Direct Speaker-to-Camera',
+  'Casual & Relatable',
+  'Expert Educator',
+  'High-Energy Coach',
+  'Calm & Confident',
+  'Socratic / Question-Led',
+  'Raw & Unfiltered',
+]
+
+const AVATAR_NAME_OPTIONS = [
+  'Overworked Professional',
+  'Aspiring Entrepreneur',
+  'Struggling Freelancer',
+  'Ambitious Side-Hustler',
+  'Burned-Out Employee',
+  'New Coach / Consultant',
+  'Scaling Business Owner',
+  'Recent Graduate',
+  'Career Pivoter',
+  'Stay-at-Home Parent Returning to Work',
+]
+
+const PROOF_CONTENT_PLACEHOLDER: Record<ProofPoint['type'], string> = {
+  result:      'e.g. Sarah went from $3K to $12K/month in 8 weeks after joining the program',
+  testimonial: 'e.g. "I never believed I could do it — now I\'m fully booked every month." — James T.',
+  statistic:   'e.g. 87% of clients hit 6 figures within their first 90 days in the program',
+  case_study:  'e.g. Marcus, a former corporate manager, scaled his coaching practice to $35K/month in 5 months',
+}
+
+const PROOF_SOURCE_PLACEHOLDER: Record<ProofPoint['type'], string> = {
+  result:      'e.g. Sarah M. — 1:1 coaching client',
+  testimonial: 'e.g. James T. — Group program member',
+  statistic:   'e.g. Internal cohort data, Jan–Mar 2024',
+  case_study:  'e.g. Marcus V. — Case study (5-month engagement)',
+}
+
+// ── Combobox input ─────────────────────────────────────────────────────────────
+
+function ComboboxInput({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: string[]
+  placeholder?: string
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const filtered = value.trim()
+    ? options.filter(o => o.toLowerCase().includes(value.toLowerCase()))
+    : options
+
+  const showDropdown = open && filtered.length > 0
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div ref={containerRef} className={cn('relative', className)}>
+      <Input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}
+        placeholder={placeholder}
+        className="h-8 text-sm pr-7"
+      />
+      <ChevronDown
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none"
+      />
+      <AnimatePresence>
+        {showDropdown && (
+          <m.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.1 }}
+            className="absolute z-50 top-full mt-1 w-full rounded-md border border-border bg-popover shadow-lg overflow-hidden"
+          >
+            <div className="max-h-48 overflow-y-auto py-1">
+              {filtered.map(option => (
+                <button
+                  key={option}
+                  type="button"
+                  className={cn(
+                    'w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground',
+                    value === option && 'bg-accent/40 font-medium',
+                  )}
+                  onMouseDown={e => {
+                    e.preventDefault()
+                    onChange(option)
+                    setOpen(false)
+                  }}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 // ── Tag input ─────────────────────────────────────────────────────────────────
@@ -169,13 +323,19 @@ function FormSection({
   )
 }
 
-// ── Field label ───────────────────────────────────────────────────────────────
+// ── Field label + hint ─────────────────────────────────────────────────────────
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <label className="block text-xs font-medium text-muted-foreground mb-1.5">
       {children}
     </label>
+  )
+}
+
+function Hint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground/60">{children}</p>
   )
 }
 
@@ -208,28 +368,31 @@ function AvatarCard({
       </div>
       <div>
         <Label>Avatar name</Label>
-        <Input
+        <ComboboxInput
           value={avatar.name}
-          onChange={e => onChange({ ...avatar, name: e.target.value })}
-          placeholder="e.g. Overworked Executive"
-          className="h-8 text-sm"
+          onChange={name => onChange({ ...avatar, name })}
+          options={AVATAR_NAME_OPTIONS}
+          placeholder="e.g. Overworked Professional"
         />
+        <Hint>A short archetype label used to target content at this specific person.</Hint>
       </div>
       <div>
-        <Label>Pains (press Enter to add)</Label>
+        <Label>Pains — what keeps them up at night (Enter to add)</Label>
         <TagInput
           values={avatar.pains}
           onChange={pains => onChange({ ...avatar, pains })}
-          placeholder="Add a pain point…"
+          placeholder="e.g. Can't scale past $10K/month…"
         />
+        <Hint>Be specific. Vague pains ("wants more money") produce vague scripts.</Hint>
       </div>
       <div>
-        <Label>Desires (press Enter to add)</Label>
+        <Label>Desires — their dream outcome (Enter to add)</Label>
         <TagInput
           values={avatar.desires}
           onChange={desires => onChange({ ...avatar, desires })}
-          placeholder="Add a desire…"
+          placeholder="e.g. Consistent $30K months without burnout…"
         />
+        <Hint>The transformation the avatar wants. The AI uses this in the solution section.</Hint>
       </div>
     </div>
   )
@@ -272,10 +435,10 @@ function ProofRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="result">Result</SelectItem>
-            <SelectItem value="testimonial">Testimonial</SelectItem>
-            <SelectItem value="statistic">Statistic</SelectItem>
-            <SelectItem value="case_study">Case Study</SelectItem>
+            <SelectItem value="result">Result — a measurable outcome</SelectItem>
+            <SelectItem value="testimonial">Testimonial — a direct client quote</SelectItem>
+            <SelectItem value="statistic">Statistic — a data point or percentage</SelectItem>
+            <SelectItem value="case_study">Case Study — a named client journey</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -284,17 +447,18 @@ function ProofRow({
         <Textarea
           value={proof.content}
           onChange={e => onChange({ ...proof, content: e.target.value })}
-          placeholder="The proof content…"
+          placeholder={PROOF_CONTENT_PLACEHOLDER[proof.type]}
           className="text-sm resize-none"
           rows={3}
         />
+        <Hint>The AI quotes this verbatim. Use exact names, numbers, and timeframes — any change counts as fabrication and will fail the quality review.</Hint>
       </div>
       <div>
         <Label>Source</Label>
         <Input
           value={proof.source}
           onChange={e => onChange({ ...proof, source: e.target.value })}
-          placeholder="e.g. James T. Case Study"
+          placeholder={PROOF_SOURCE_PLACEHOLDER[proof.type]}
           className="h-8 text-sm"
         />
       </div>
@@ -449,6 +613,7 @@ function ClientForm({
 
       {/* Scrollable form body */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
+
         {/* Basic info */}
         <FormSection title="Basic Info">
           <div className="grid grid-cols-2 gap-4">
@@ -463,12 +628,13 @@ function ClientForm({
             </div>
             <div>
               <Label>Niche *</Label>
-              <Input
+              <ComboboxInput
                 value={form.niche}
-                onChange={e => set('niche', e.target.value)}
-                placeholder="e.g. high-ticket fitness coaching"
-                className="h-8 text-sm"
+                onChange={v => set('niche', v)}
+                options={NICHE_OPTIONS}
+                placeholder="Select or type a niche…"
               />
+              <Hint>Used to contextualise every script for this client's market.</Hint>
             </div>
           </div>
           <div>
@@ -476,10 +642,11 @@ function ClientForm({
             <Textarea
               value={form.portfolioSummary}
               onChange={e => set('portfolioSummary', e.target.value)}
-              placeholder="Brief description of the client's track record and results…"
+              placeholder="e.g. 5 years helping 6-figure coaches scale to 7 figures. Known for a systems-first approach. 200+ clients. Regular speaker at industry events."
               className="text-sm resize-none"
               rows={3}
             />
+            <Hint>A factual snapshot of the client's credibility. The AI uses this to anchor claims about the coach's track record.</Hint>
           </div>
         </FormSection>
 
@@ -488,21 +655,23 @@ function ClientForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Tone</Label>
-              <Input
+              <ComboboxInput
                 value={form.brandVoice.tone}
-                onChange={e => setBrandVoice('tone', e.target.value)}
-                placeholder="e.g. direct, no-fluff, results-driven"
-                className="h-8 text-sm"
+                onChange={v => setBrandVoice('tone', v)}
+                options={TONE_OPTIONS}
+                placeholder="Select or describe the tone…"
               />
+              <Hint>The emotional register of the script — how it feels to the viewer.</Hint>
             </div>
             <div>
               <Label>Speaking style</Label>
-              <Input
+              <ComboboxInput
                 value={form.brandVoice.speakingStyle}
-                onChange={e => setBrandVoice('speakingStyle', e.target.value)}
-                placeholder="e.g. conversational authority"
-                className="h-8 text-sm"
+                onChange={v => setBrandVoice('speakingStyle', v)}
+                options={SPEAKING_STYLE_OPTIONS}
+                placeholder="Select or describe the style…"
               />
+              <Hint>How the script sounds when read aloud. Affects sentence structure and rhythm.</Hint>
             </div>
           </div>
           <div>
@@ -510,16 +679,18 @@ function ClientForm({
             <TagInput
               values={form.brandVoice.doNotUse}
               onChange={v => setBrandVoice('doNotUse', v)}
-              placeholder="Add forbidden word or phrase…"
+              placeholder="Type a word or phrase and press Enter…"
             />
+            <Hint>The quality agent will flag any script that uses these. Be specific — "hustle culture language" is less useful than "grind", "crush it", "kill it".</Hint>
           </div>
           <div>
             <Label>Reference phrases (optional)</Label>
             <TagInput
               values={form.brandVoice.referenceExamples}
               onChange={v => setBrandVoice('referenceExamples', v)}
-              placeholder="Add a reference phrase…"
+              placeholder={'e.g. "The gap is your edge" — press Enter to add…'}
             />
+            <Hint>Signature lines or phrases this client actually uses. Helps the AI match their authentic voice.</Hint>
           </div>
         </FormSection>
 
@@ -550,6 +721,9 @@ function ClientForm({
 
         {/* Proof bank */}
         <FormSection title="Proof Bank" collapsible>
+          <p className="text-[11px] text-muted-foreground/70 -mt-1">
+            The quality review agent checks every claim in the script against this bank. Only entries listed here will pass.
+          </p>
           <div className="space-y-3">
             {form.proofBank.map((p, i) => (
               <ProofRow
@@ -584,13 +758,14 @@ function ClientForm({
                 placeholder="e.g. Executive Edge Program"
                 className="h-8 text-sm"
               />
+              <Hint>Used in the solution section by name.</Hint>
             </div>
             <div>
               <Label>Price</Label>
               <Input
                 value={form.offerMechanics.price}
                 onChange={e => setOffer('price', e.target.value)}
-                placeholder="e.g. $5,000"
+                placeholder="e.g. $5,000 / $997/month"
                 className="h-8 text-sm"
               />
             </div>
@@ -600,16 +775,17 @@ function ClientForm({
             <Input
               value={form.offerMechanics.guarantee}
               onChange={e => setOffer('guarantee', e.target.value)}
-              placeholder="e.g. 60-day visible results guarantee or full refund"
+              placeholder="e.g. 60-day visible results or full refund, no questions asked"
               className="h-8 text-sm"
             />
+            <Hint>Used to lower resistance in the solution section. Be specific — "results guarantee" is weaker than an exact condition.</Hint>
           </div>
           <div>
-            <Label>Key benefits (press Enter to add)</Label>
+            <Label>Key benefits (Enter to add)</Label>
             <TagInput
               values={form.offerMechanics.keyBenefits}
               onChange={v => setOffer('keyBenefits', v)}
-              placeholder="Add a key benefit…"
+              placeholder="e.g. Weekly 1:1 coaching calls…"
             />
           </div>
           <div>
@@ -620,6 +796,7 @@ function ClientForm({
               placeholder="e.g. Book a free strategy call at example.com/start"
               className="h-8 text-sm"
             />
+            <Hint>This appears word-for-word at the end of every script. Include the exact URL or action.</Hint>
           </div>
         </FormSection>
       </div>
