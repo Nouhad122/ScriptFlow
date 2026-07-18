@@ -71,6 +71,20 @@ function validateRawScript(raw: unknown): RawScriptFromAI {
   }
 
   const r = raw as Record<string, unknown>;
+
+  // Recovery: model sometimes returns body fields at the top level instead of nested.
+  // Reconstruct the body object so validation can continue.
+  if ((!r['body'] || typeof r['body'] !== 'object') &&
+      r['problem'] && r['story'] && r['solution'] && r['proof'] && r['cta']) {
+    r['body'] = {
+      problem:  r['problem'],
+      story:    r['story'],
+      solution: r['solution'],
+      proof:    r['proof'],
+      cta:      r['cta'],
+    };
+  }
+
   const body = r['body'] as Record<string, unknown> | undefined;
 
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -171,25 +185,33 @@ export class ScriptAgent implements IScriptAgent {
       };
     }
 
-    try {
-      const prompt = buildScriptPrompt(idea, context, memoryContext, qualityFeedback, videoDuration);
-      const raw = await this.ai.generateStructured<RawScriptFromAI>(prompt);
-      const validated = validateRawScript(raw);
-      const script = mapToScript(validated, idea);
+    const MAX_ATTEMPTS = 2;
+    let lastError: Error | undefined;
 
-      return {
-        success: true,
-        data: script,
-        agentName: 'ScriptAgent',
-        durationMs: Date.now() - start,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error in ScriptAgent',
-        agentName: 'ScriptAgent',
-        durationMs: Date.now() - start,
-      };
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const prompt = buildScriptPrompt(idea, context, memoryContext, qualityFeedback, videoDuration);
+        const raw = await this.ai.generateStructured<RawScriptFromAI>(prompt);
+        const validated = validateRawScript(raw);
+        const script = mapToScript(validated, idea);
+
+        return {
+          success: true,
+          data: script,
+          agentName: 'ScriptAgent',
+          durationMs: Date.now() - start,
+        };
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error in ScriptAgent');
+        // On the last attempt, stop retrying and fall through to failure return.
+      }
     }
+
+    return {
+      success: false,
+      error: lastError?.message ?? 'Unknown error in ScriptAgent',
+      agentName: 'ScriptAgent',
+      durationMs: Date.now() - start,
+    };
   }
 }

@@ -52,7 +52,8 @@ export class AIService {
     });
   }
 
-  private async callAI(prompt: string, isJson = false): Promise<string> {
+  private async callAI(prompt: string, isJson = false, attempt = 1): Promise<string> {
+    const MAX_ATTEMPTS = 3;
     const model = this.getModel(isJson);
 
     try {
@@ -70,9 +71,18 @@ export class AIService {
       return text;
     } catch (error) {
       if (error instanceof MissingApiKeyError || error instanceof AIProviderError) throw error;
+
       const message = error instanceof Error ? error.message : 'Unknown error';
       const statusMatch = message.match(/\[(\d{3})\s/);
       const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : undefined;
+
+      // Retry on transient errors: 503 (service unavailable) and 429 (rate limit).
+      // Exponential backoff: 2s → 4s before attempts 2 and 3.
+      if ((statusCode === 503 || statusCode === 429) && attempt < MAX_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        return this.callAI(prompt, isJson, attempt + 1);
+      }
+
       throw new AIProviderError(message, statusCode);
     }
   }

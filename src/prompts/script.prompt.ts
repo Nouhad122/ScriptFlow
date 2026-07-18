@@ -263,6 +263,9 @@ Return ONLY valid JSON. No markdown fences. No explanation. No extra fields.
 Start with { and end with }.
 ALL string fields below are REQUIRED and must be non-empty. Only "productionNotes" may be null.
 
+CRITICAL: problem, story, solution, proof, and cta MUST be nested inside the "body" object.
+Do NOT place them at the top level of the JSON.
+
 {
   "hook1": "<first hook — pain/problem led — REQUIRED non-empty string>",
   "hook2": "<second hook — result/proof led — REQUIRED non-empty string>",

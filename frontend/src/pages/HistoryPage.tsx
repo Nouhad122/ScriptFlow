@@ -504,7 +504,7 @@ export function HistoryPage() {
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </button>
             {sortOpen && (
-              <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-lg border border-border bg-card shadow-lg">
+              <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-border bg-card shadow-lg">
                 {SORT_OPTIONS.map(opt => (
                   <button
                     key={opt.value}

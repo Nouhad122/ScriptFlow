@@ -134,6 +134,9 @@ Each concept must:
 
 ━━━ AVAILABLE FIELD VALUES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+targetAvatar — REQUIRED, non-empty. Must be one of these exact strings:
+${context.avatars.map((a) => `  "${a.name}"`).join('\n')}
+
 creativeType — use as many different values as possible across the batch:
   talking-head  → host speaks directly to camera
   ugc           → casual first-person, user-generated style
@@ -161,7 +164,7 @@ Each object must match this exact schema — all fields are required strings:
   "angle":          "<the persuasion angle, e.g. 'authority proof', 'pain amplification', 'curiosity gap', 'transformation story', 'social proof cascade'>",
   "leadType":       "<one value from the leadType list above>",
   "supportingProof":"<copied verbatim from the Proof Bank — no paraphrasing>",
-  "targetAvatar":   "<exact avatar name from the Client Context>",
+  "targetAvatar":   "<REQUIRED non-empty string — must exactly match one of the avatar names listed above>",
   "targetPain":     "<the specific pain point from that avatar's pain list>"
 }`;
 }

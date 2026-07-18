@@ -35,7 +35,7 @@ export interface AIConfig {
 
 export const aiConfig: AIConfig = {
   model: 'gemini-2.5-flash',
-  maxTokens: 3000,
+  maxTokens: 8000,
   temperature: 1,
   siteUrl: 'https://scriptflow.app',
   appName: 'ScriptFlow',
