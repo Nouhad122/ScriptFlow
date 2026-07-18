@@ -1,4 +1,4 @@
-import apiClient from '@/lib/axios'
+import apiClient, { AI_TIMEOUT_MS } from '@/lib/axios'
 import type { QualityReview, ClientContext, ScriptStatus } from '@/types'
 
 interface ReviewResponse {
@@ -28,8 +28,10 @@ export async function runQualityReview(
   scriptId: string,
   clientContext: ClientContext,
 ): Promise<{ review: QualityReview; script: { id: string; status: ScriptStatus } }> {
-  const { data } = await apiClient.post<RunReviewResponse>(`/api/scripts/${scriptId}/review`, {
-    clientContext,
-  })
+  const { data } = await apiClient.post<RunReviewResponse>(
+    `/api/scripts/${scriptId}/review`,
+    { clientContext },
+    { timeout: AI_TIMEOUT_MS },
+  )
   return { review: data.review, script: data.script }
 }

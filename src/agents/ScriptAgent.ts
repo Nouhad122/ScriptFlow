@@ -24,7 +24,7 @@
 
 import { randomUUID } from 'crypto';
 import type { IScriptAgent } from './interfaces';
-import type { AgentResult, ClientContext, Idea, Script, SectionNotes } from '../types';
+import type { AgentResult, ClientContext, Idea, Script, SectionNotes, VideoDuration } from '../types';
 import type { AIService } from '../services/AIService';
 import { type ScriptAgentConfig, scriptAgentConfig } from '../config/script.config';
 import { buildScriptPrompt } from '../prompts/script.prompt';
@@ -151,7 +151,8 @@ export class ScriptAgent implements IScriptAgent {
     idea: Idea,
     context: ClientContext,
     memoryContext: Script[],
-    qualityFeedback?: string
+    qualityFeedback?: string,
+    videoDuration?: VideoDuration
   ): Promise<AgentResult<Script>> {
     const start = Date.now();
 
@@ -171,7 +172,7 @@ export class ScriptAgent implements IScriptAgent {
     }
 
     try {
-      const prompt = buildScriptPrompt(idea, context, memoryContext, qualityFeedback);
+      const prompt = buildScriptPrompt(idea, context, memoryContext, qualityFeedback, videoDuration);
       const raw = await this.ai.generateStructured<RawScriptFromAI>(prompt);
       const validated = validateRawScript(raw);
       const script = mapToScript(validated, idea);

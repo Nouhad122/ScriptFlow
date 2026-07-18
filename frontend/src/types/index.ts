@@ -69,6 +69,7 @@ export interface PipelineRunSuccess {
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type ScriptStatus = 'pending_review' | 'passed' | 'held'
+export type VideoDuration = '30s' | '45-60s' | '60-90s' | '90-120s'
 export type QualityDecision = 'PASS' | 'HOLD'
 export type PipelineStatus = 'completed' | 'failed'
 

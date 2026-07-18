@@ -84,13 +84,13 @@ export async function runPipeline(req: Request, res: Response): Promise<void> {
 
   // Each agent gets its own AIService instance with the temperature appropriate
   // for its cognitive task: 1.0 for creative generation, 0.3 for analytical scoring.
-  const ideaAI = new AIService(env.openrouterApiKey, {
+  const ideaAI = new AIService(env.geminiApiKey, {
     model: aiConfig.model,
     maxTokens: aiConfig.maxTokens,
     temperature: ideaAgentConfig.temperature,
   });
 
-  const iceAI = new AIService(env.openrouterApiKey, {
+  const iceAI = new AIService(env.geminiApiKey, {
     model: aiConfig.model,
     maxTokens: aiConfig.maxTokens,
     temperature: iceAgentConfig.temperature,

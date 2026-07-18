@@ -1,5 +1,5 @@
-import apiClient from '@/lib/axios'
-import type { Script, ClientContext, ScriptWithHook } from '@/types'
+import apiClient, { AI_TIMEOUT_MS } from '@/lib/axios'
+import type { Script, ClientContext, ScriptWithHook, VideoDuration } from '@/types'
 
 interface AllScriptsResponse {
   success: boolean
@@ -22,11 +22,13 @@ interface ScriptForIdeaResponse {
 export async function generateScript(
   ideaId: string,
   clientContext: ClientContext,
+  videoDuration?: VideoDuration,
 ): Promise<Script> {
-  const { data } = await apiClient.post<GenerateScriptResponse>('/api/scripts/generate', {
-    ideaId,
-    clientContext,
-  })
+  const { data } = await apiClient.post<GenerateScriptResponse>(
+    '/api/scripts/generate',
+    { ideaId, clientContext, videoDuration },
+    { timeout: AI_TIMEOUT_MS },
+  )
   return data.script
 }
 
@@ -38,10 +40,12 @@ export async function getAllScripts(): Promise<ScriptWithHook[]> {
 export async function regenerateScript(
   ideaId: string,
   clientContext: ClientContext,
+  videoDuration?: VideoDuration,
 ): Promise<Script> {
   const { data } = await apiClient.post<GenerateScriptResponse>(
     `/api/scripts/${ideaId}/regenerate`,
-    { clientContext },
+    { clientContext, videoDuration },
+    { timeout: AI_TIMEOUT_MS },
   )
   return data.script
 }

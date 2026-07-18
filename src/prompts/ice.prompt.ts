@@ -122,7 +122,8 @@ An idea with Impact 9 but Ease 2 may warrant CONSIDER instead of APPROVE.
 1. All scores must be whole integers between 1 and 10 (inclusive).
 2. Every reason must reference something specific from the client context.
 3. Return a score for EVERY idea — do not skip any.
-4. The "id" in each response object must exactly match the idea ID provided above.
+4. The "ideaId" in each object must exactly match the idea ID provided above.
+5. Each ideaId must appear EXACTLY ONCE. Never include the same ideaId twice.
 
 ━━━ RESPONSE FORMAT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

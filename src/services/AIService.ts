@@ -1,164 +1,88 @@
 /**
  * AIService — the single communication channel between this application and the AI provider.
  *
- * WHY THIS ABSTRACTION EXISTS:
- *   Agents depend on AIService, not on any specific SDK or vendor.
- *   This means the choice of AI provider is an infrastructure detail hidden behind this
- *   class. Swapping providers requires changing only this file — no agent, orchestrator,
- *   or route is aware of which vendor is being called.
- *
- *   This is the Dependency Inversion Principle: high-level modules (agents) depend on
- *   an abstraction (AIService), not on low-level details (a specific SDK).
- *
- * CURRENT PROVIDER: OpenRouter
- *   OpenRouter exposes an OpenAI-compatible API, so the standard OpenAI SDK is used
- *   with a custom baseURL pointing to OpenRouter's endpoint.
- *   Model routing (which underlying LLM handles the request) is controlled by the
- *   model name in ai.config.ts — no code changes required to switch models.
+ * CURRENT PROVIDER: Google Gemini (native SDK)
+ *   Uses @google/generative-ai for direct access to Gemini models.
+ *   generateStructured uses responseMimeType: 'application/json' which forces the model
+ *   to output valid JSON — schema-level enforcement, not just a prompt instruction.
  *
  * HOW TO SWAP PROVIDERS:
- *   1. Install the new provider's SDK (or keep the OpenAI SDK if compatible).
- *   2. Rewrite the private methods in this file to use the new SDK.
+ *   1. Install the new provider's SDK.
+ *   2. Rewrite the private methods in this file.
  *   3. Update ai.config.ts with the new model name.
  *   4. Update env.ts and .env.example with the new API key variable.
  *   Zero changes to agents, orchestrators, controllers, or prompts.
- *
- * RESPONSIBILITIES:
- *   - Initialize and manage the OpenAI SDK client pointed at OpenRouter
- *   - Validate the API key before any request is made
- *   - Send prompts and return responses
- *   - Handle and translate SDK errors into typed application errors
- *   - Log every AI request (provider, method, model, duration, outcome, HTTP status)
- *   - Parse and validate JSON responses for structured generation
- *
- * NOT RESPONSIBLE FOR:
- *   - Prompt engineering (agents own their prompts)
- *   - Business logic (orchestrator owns sequencing)
- *   - Data persistence (memory agent owns storage)
  */
 
-import OpenAI, { APIError } from 'openai';
+import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 import { type AIConfig, aiConfig } from '../config/ai.config';
 import { env } from '../config/env';
 import { AIProviderError, JsonParseError, MissingApiKeyError } from '../utils/errors';
 import { logAiRequest } from '../utils/logger';
 
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const PROVIDER_NAME = 'openrouter';
+const PROVIDER_NAME = 'gemini';
 
 export class AIService {
   private readonly apiKey: string;
   private readonly config: AIConfig;
 
-  // Lazily initialised — allows the server to start without a valid key
-  // so the health endpoint can report a meaningful error instead of crashing on boot.
-  private client: OpenAI | null = null;
+  private genAI: GoogleGenerativeAI | null = null;
 
   constructor(apiKey: string, config: AIConfig = aiConfig) {
     this.apiKey = apiKey;
     this.config = config;
   }
 
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Returns the OpenAI client configured for OpenRouter, validating the key
-   * and initialising on first call. Throws MissingApiKeyError if the key is absent.
-   *
-   * Optional HTTP-Referer and X-Title headers are added when siteUrl/appName
-   * are present in config — OpenRouter uses these to attribute traffic.
-   */
-  private ensureClient(): OpenAI {
+  private ensureClient(): GoogleGenerativeAI {
     const trimmed = this.apiKey?.trim();
-    if (!trimmed || trimmed === 'your_openrouter_api_key_here') {
-      throw new MissingApiKeyError();
-    }
-    if (!this.client) {
-      const defaultHeaders: Record<string, string> = {};
-      if (this.config.siteUrl) defaultHeaders['HTTP-Referer'] = this.config.siteUrl;
-      if (this.config.appName) defaultHeaders['X-Title'] = this.config.appName;
-
-      this.client = new OpenAI({
-        baseURL: OPENROUTER_BASE_URL,
-        apiKey: trimmed,
-        defaultHeaders,
-      });
-    }
-    return this.client;
+    if (!trimmed) throw new MissingApiKeyError();
+    if (!this.genAI) this.genAI = new GoogleGenerativeAI(trimmed);
+    return this.genAI;
   }
 
-  /**
-   * Raw API call — no logging. Called by public methods that own their own
-   * log entry. Keeping this private prevents double-logging on retry paths.
-   */
-  private async callAI(prompt: string): Promise<string> {
+  private getModel(isJson: boolean): GenerativeModel {
     const client = this.ensureClient();
+    return client.getGenerativeModel({
+      model: this.config.model,
+      generationConfig: {
+        maxOutputTokens: this.config.maxTokens,
+        temperature: this.config.temperature,
+        ...(isJson && { responseMimeType: 'application/json' }),
+      },
+    });
+  }
+
+  private async callAI(prompt: string, isJson = false): Promise<string> {
+    const model = this.getModel(isJson);
 
     try {
-      const response = await client.chat.completions.create({
-        model: this.config.model,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-      });
+      const result = await model.generateContent(prompt);
+      const response = result.response;
 
-      const text = response.choices[0]?.message?.content;
-      if (!text) {
-        throw new AIProviderError('OpenRouter returned an empty response');
+      if (response.promptFeedback?.blockReason) {
+        throw new AIProviderError(
+          `Content blocked by Gemini safety filters: ${response.promptFeedback.blockReason}`
+        );
       }
+
+      const text = response.text();
+      if (!text) throw new AIProviderError('Gemini returned an empty response');
       return text;
     } catch (error) {
-      // Re-throw our own typed errors as-is
-      if (error instanceof MissingApiKeyError || error instanceof AIProviderError) {
-        throw error;
-      }
-      // Translate OpenAI SDK errors (which OpenRouter also surfaces) into our typed error.
-      // APIError carries the HTTP status code from the upstream response.
-      if (error instanceof APIError) {
-        throw new AIProviderError(error.message, error.status);
-      }
-      throw new AIProviderError(error instanceof Error ? error.message : 'Unknown error');
+      if (error instanceof MissingApiKeyError || error instanceof AIProviderError) throw error;
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const statusMatch = message.match(/\[(\d{3})\s/);
+      const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : undefined;
+      throw new AIProviderError(message, statusCode);
     }
   }
 
-  /**
-   * Strips markdown code fences that the model sometimes adds despite instructions,
-   * then parses the cleaned string as JSON.
-   * Throws a native SyntaxError (from JSON.parse) if the string is invalid JSON.
-   */
   private parseJSON<T>(raw: string): T {
     const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
     const cleaned = codeBlockMatch ? codeBlockMatch[1].trim() : raw.trim();
     return JSON.parse(cleaned) as T;
   }
 
-  /**
-   * Wraps any prompt with an unambiguous JSON-only instruction.
-   * Placed at the end so it overrides any contradictory instructions above it.
-   */
-  private buildJsonPrompt(prompt: string): string {
-    return (
-      `${prompt}\n\n` +
-      `---\n` +
-      `CRITICAL RESPONSE REQUIREMENT:\n` +
-      `You MUST respond with ONLY a valid JSON object or array.\n` +
-      `Do NOT include markdown code blocks, backticks, or any explanation.\n` +
-      `Do NOT include any text before or after the JSON.\n` +
-      `Begin your response with { or [ and end with } or ].`
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Public API
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Sends a plain-text prompt to the AI provider and returns the response string.
-   *
-   * Agents use this for prompts that do not require structured output.
-   */
   async generateText(prompt: string): Promise<string> {
     const start = Date.now();
     let success = false;
@@ -166,7 +90,7 @@ export class AIService {
     let statusCode: number | undefined;
 
     try {
-      const result = await this.callAI(prompt);
+      const result = await this.callAI(prompt, false);
       success = true;
       return result;
     } catch (error) {
@@ -186,19 +110,6 @@ export class AIService {
     }
   }
 
-  /**
-   * Sends a prompt to the AI provider and parses the response as a typed JSON value.
-   *
-   * Agents use this whenever they need a structured object back (ideas, scores,
-   * quality reviews, scripts). The generic parameter T is the expected shape.
-   *
-   * Retry strategy:
-   *   1. Ask the model for JSON using the wrapped prompt
-   *   2. If JSON.parse fails, send a one-shot correction prompt
-   *   3. If parsing still fails, throw JsonParseError — do not silently proceed
-   *
-   * The total duration logged includes any retry call.
-   */
   async generateStructured<T>(prompt: string): Promise<T> {
     const start = Date.now();
     let success = false;
@@ -206,20 +117,19 @@ export class AIService {
     let statusCode: number | undefined;
 
     try {
-      const raw = await this.callAI(this.buildJsonPrompt(prompt));
+      const raw = await this.callAI(prompt, true);
 
       try {
         const parsed = this.parseJSON<T>(raw);
         success = true;
         return parsed;
       } catch {
-        // First attempt failed — retry once with an explicit correction prompt
         const correctionPrompt =
           `The text below failed JSON parsing. ` +
           `Return ONLY the valid JSON object or array from it, ` +
           `with no other text, no code fences, no explanation:\n\n${raw}`;
 
-        const corrected = await this.callAI(correctionPrompt);
+        const corrected = await this.callAI(correctionPrompt, true);
 
         try {
           const parsed = this.parseJSON<T>(corrected);
@@ -247,18 +157,4 @@ export class AIService {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Singleton
-// ---------------------------------------------------------------------------
-
-/**
- * The shared AIService instance used across the application.
- *
- * Agents receive this via constructor injection rather than importing it
- * directly — this keeps agents testable with mock service instances.
- *
- * The client is lazily initialised, so importing this module does not
- * throw even when OPENROUTER_API_KEY is missing. Errors surface on first
- * method call, which is where the health endpoint will catch them.
- */
-export const aiService = new AIService(env.openrouterApiKey);
+export const aiService = new AIService(env.geminiApiKey);

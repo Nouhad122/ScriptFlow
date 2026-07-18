@@ -24,6 +24,8 @@
 
 export type ScriptStatus = 'pending_review' | 'passed' | 'held';
 
+export type VideoDuration = '30s' | '45-60s' | '60-90s' | '90-120s';
+
 // Per-section delivery and visual notes — one entry per body section.
 // Null for scripts generated before this feature was added.
 export interface SectionNotes {

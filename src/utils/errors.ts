@@ -18,8 +18,8 @@
 export class MissingApiKeyError extends Error {
   constructor() {
     super(
-      'OPENROUTER_API_KEY is missing or not set. ' +
-        'Add it to your .env file: OPENROUTER_API_KEY=sk-or-...'
+      'GEMINI_API_KEY is missing or not set. ' +
+        'Add it to your .env file: GEMINI_API_KEY=AIza...'
     );
     this.name = 'MissingApiKeyError';
   }

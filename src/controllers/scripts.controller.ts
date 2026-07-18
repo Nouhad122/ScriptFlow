@@ -33,7 +33,7 @@ import {
 import { getReviewByScriptId, deleteReviewByScriptId } from '../database/quality.repository';
 import type { QualityChecks } from '../types';
 import { getMemoryWriteService } from '../memory';
-import type { ClientContext } from '../types';
+import type { ClientContext, VideoDuration } from '../types';
 
 // ---------------------------------------------------------------------------
 // GET /api/scripts
@@ -98,9 +98,10 @@ export async function getScriptForIdea(req: Request, res: Response): Promise<voi
 // ---------------------------------------------------------------------------
 
 export async function generateScript(req: Request, res: Response): Promise<void> {
-  const { ideaId, clientContext } = req.body as {
+  const { ideaId, clientContext, videoDuration } = req.body as {
     ideaId?: string;
     clientContext?: ClientContext;
+    videoDuration?: VideoDuration;
   };
 
   if (!ideaId || typeof ideaId !== 'string') {
@@ -160,7 +161,7 @@ export async function generateScript(req: Request, res: Response): Promise<void>
 
   // ── Generate the script ─────────────────────────────────────────────────────
 
-  const ai = new AIService(env.openrouterApiKey, {
+  const ai = new AIService(env.geminiApiKey, {
     model: aiConfig.model,
     maxTokens: aiConfig.maxTokens,
     temperature: scriptAgentConfig.temperature,
@@ -168,7 +169,7 @@ export async function generateScript(req: Request, res: Response): Promise<void>
 
   const agent = new ScriptAgent(ai);
 
-  const result = await agent.generateScript(idea, clientContext, []);
+  const result = await agent.generateScript(idea, clientContext, [], undefined, videoDuration);
 
   if (!result.success) {
     res.status(500).json({
@@ -238,7 +239,10 @@ function formatQualityFeedback(checks: QualityChecks, overallScore: number): str
 
 export async function regenerateScript(req: Request, res: Response): Promise<void> {
   const { ideaId } = req.params;
-  const { clientContext } = req.body as { clientContext?: ClientContext };
+  const { clientContext, videoDuration } = req.body as {
+    clientContext?: ClientContext;
+    videoDuration?: VideoDuration;
+  };
 
   if (!clientContext || !clientContext.id || !clientContext.name) {
     res.status(400).json({
@@ -286,14 +290,14 @@ export async function regenerateScript(req: Request, res: Response): Promise<voi
 
   // ── Generate new script with quality feedback ───────────────────────────────
 
-  const ai = new AIService(env.openrouterApiKey, {
+  const ai = new AIService(env.geminiApiKey, {
     model: aiConfig.model,
     maxTokens: aiConfig.maxTokens,
     temperature: scriptAgentConfig.temperature,
   });
 
   const agent = new ScriptAgent(ai);
-  const result = await agent.generateScript(idea, clientContext, [], qualityFeedback);
+  const result = await agent.generateScript(idea, clientContext, [], qualityFeedback, videoDuration);
 
   if (!result.success) {
     res.status(500).json({

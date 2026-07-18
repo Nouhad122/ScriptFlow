@@ -87,7 +87,11 @@ function validateRawScores(raw: unknown, ideaIds: Set<string>): RawScoreFromAI[]
       throw new Error(`Score at index ${i}: "ideaId" "${ideaId}" does not match any input idea`);
     }
     if (seenIds.has(ideaId)) {
-      throw new Error(`Score at index ${i}: duplicate score for ideaId "${ideaId}"`);
+      // AI returned this ideaId twice. Discard the second entry — the first score
+      // is already recorded. If the AI omitted a different idea and substituted it
+      // with this duplicate, the "every input idea must have a score" check below
+      // will still catch it and fail correctly.
+      continue;
     }
     seenIds.add(ideaId);
 

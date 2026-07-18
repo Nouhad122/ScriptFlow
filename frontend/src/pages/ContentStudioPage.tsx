@@ -31,7 +31,7 @@ import { useScripts } from '@/hooks/use-scripts'
 import { useScriptForIdea } from '@/hooks/use-script-for-idea'
 import { useGenerateScript } from '@/hooks/use-generate-script'
 import { useClients } from '@/hooks/use-clients'
-import type { Idea, Script } from '@/types'
+import type { Idea, Script, VideoDuration } from '@/types'
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -175,6 +175,13 @@ function CopyButton({ text, label, size = 'icon', className }: CopyButtonProps) 
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
+
+const DURATION_PRESETS: { value: VideoDuration; label: string; desc: string }[] = [
+  { value: '30s',      label: '30s',     desc: '~70 words'  },
+  { value: '45-60s',   label: '45–60s',  desc: '~120 words' },
+  { value: '60-90s',   label: '60–90s',  desc: '~175 words' },
+  { value: '90-120s',  label: '90–120s', desc: '~245 words' },
+]
 
 const REC_CLASS: Record<string, string> = {
   APPROVE:  'bg-green-500/10 text-green-400 border-green-500/20',
@@ -374,34 +381,65 @@ function NoScriptPanel({
   onGenerate,
   isGenerating,
   clientExists,
+  selectedDuration,
+  onDurationChange,
 }: {
   onGenerate: () => void
   isGenerating: boolean
   clientExists: boolean
+  selectedDuration: VideoDuration
+  onDurationChange: (d: VideoDuration) => void
 }) {
-
   return (
     <div className="flex h-full items-center justify-center">
       <m.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="space-y-4 text-center"
+        className="w-72 space-y-5 text-center"
       >
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <Sparkles className="h-6 w-6 text-primary" />
+        <div className="space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Sparkles className="h-6 w-6 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">No script yet</p>
+            <p className="text-xs text-muted-foreground">
+              {clientExists
+                ? 'Choose a video length, then generate.'
+                : 'Client context not found for this idea.'}
+            </p>
+          </div>
         </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">No script yet</p>
-          <p className="text-xs text-muted-foreground">
-            {clientExists
-              ? 'Generate a script for this approved idea.'
-              : 'Client context not found for this idea.'}
-          </p>
-        </div>
+
+        {clientExists && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Video length
+            </p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {DURATION_PRESETS.map(d => (
+                <button
+                  key={d.value}
+                  onClick={() => onDurationChange(d.value)}
+                  className={cn(
+                    'rounded-md border px-1 py-2 text-center transition-colors',
+                    selectedDuration === d.value
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                  )}
+                >
+                  <div className="text-xs font-semibold">{d.label}</div>
+                  <div className="mt-0.5 text-[10px] opacity-70">{d.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Button
           size="sm"
-          className="gap-1.5"
+          className="w-full gap-1.5"
           disabled={isGenerating || !clientExists}
           onClick={onGenerate}
         >
@@ -423,6 +461,7 @@ export function ContentStudioPage() {
   const navigate = useNavigate()
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [selectedDuration, setSelectedDuration] = useState<VideoDuration>('60-90s')
 
   const {
     data: approvedIdeas = [],
@@ -435,6 +474,15 @@ export function ContentStudioPage() {
   const { data: clients = [] } = useClients()
 
   const generateMutation = useGenerateScript()
+
+  // Track all in-flight generations by idea ID so multiple concurrent requests
+  // each show their own spinner — generateMutation.variables only holds the latest call.
+  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set())
+
+  const addGenerating    = (id: string) => setGeneratingIds(prev => new Set([...prev, id]))
+  const removeGenerating = (id: string) => setGeneratingIds(prev => {
+    const next = new Set(prev); next.delete(id); return next
+  })
 
   const selectedIdea = approvedIdeas.find(i => i.id === selectedIdeaId) ?? null
 
@@ -462,25 +510,27 @@ export function ContentStudioPage() {
   const handleSelect   = (idea: Idea) => setSelectedIdeaId(idea.id)
 
   const handleGenerate = (idea: Idea) => {
-    setSelectedIdeaId(idea.id)
     const clientContext = clients.find(c => c.id === idea.clientId)
     if (!clientContext) return
-    generateMutation.mutate({ ideaId: idea.id, clientContext })
+    addGenerating(idea.id)
+    generateMutation.mutate(
+      { ideaId: idea.id, clientContext, videoDuration: selectedDuration },
+      { onSettled: () => removeGenerating(idea.id) },
+    )
   }
-
-  const isCurrentlyGenerating =
-    generateMutation.isPending && generateMutation.variables?.ideaId === selectedIdeaId
 
   const rightPanel = (() => {
     if (!selectedIdeaId || !selectedIdea) return <EmptyRightPanel />
-    if (scriptQuery.isLoading || isCurrentlyGenerating) return <ScriptLoadingSkeleton />
+    if (scriptQuery.isLoading || generatingIds.has(selectedIdeaId)) return <ScriptLoadingSkeleton />
     const script = scriptQuery.data ?? null
     if (script === null) {
       return (
         <NoScriptPanel
           onGenerate={() => handleGenerate(selectedIdea)}
-          isGenerating={false}
+          isGenerating={generatingIds.has(selectedIdeaId)}
           clientExists={clients.some(c => c.id === selectedIdea.clientId)}
+          selectedDuration={selectedDuration}
+          onDurationChange={setSelectedDuration}
         />
       )
     }
@@ -557,10 +607,9 @@ export function ContentStudioPage() {
             )}
 
             {ideaPage.map(idea => {
-              const isSelected  = idea.id === selectedIdeaId
-              const hasScript   = generatedIdeaIds.has(idea.id)
-              const isGenerating =
-                generateMutation.isPending && generateMutation.variables?.ideaId === idea.id
+              const isSelected   = idea.id === selectedIdeaId
+              const hasScript    = generatedIdeaIds.has(idea.id)
+              const isGenerating = generatingIds.has(idea.id)
               const clientExists = clients.some(c => c.id === idea.clientId)
               const rec = idea.iceScore?.recommendation ?? null
 
@@ -597,8 +646,7 @@ export function ContentStudioPage() {
                     disabled={isGenerating || !clientExists}
                     onClick={e => {
                       e.stopPropagation()
-                      if (hasScript) handleSelect(idea)
-                      else handleGenerate(idea)
+                      handleSelect(idea)
                     }}
                   >
                     {isGenerating ? (
@@ -606,7 +654,7 @@ export function ContentStudioPage() {
                     ) : hasScript ? (
                       <><FileText className="h-3 w-3" />Open Script</>
                     ) : (
-                      <><Sparkles className="h-3 w-3" />Generate Script</>
+                      <><Sparkles className="h-3 w-3" />Create Script</>
                     )}
                   </Button>
                 </div>

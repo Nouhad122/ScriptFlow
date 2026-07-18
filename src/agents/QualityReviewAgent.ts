@@ -75,7 +75,7 @@ interface RawQualityReview {
 // ---------------------------------------------------------------------------
 
 const SCORE_PASS_THRESHOLD: Partial<Record<keyof QualityChecks, number>> = {
-  hookStrength: 7,
+  hookStrength: 6,
 };
 
 const DEFAULT_PASS_THRESHOLD = 6;
@@ -83,6 +83,22 @@ const DEFAULT_PASS_THRESHOLD = 6;
 // ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
+
+// Gemini sometimes returns booleans as strings ("true"/"false") or numbers (1/0).
+// This coerces them to actual booleans.
+function coerceBool(value: unknown, fieldPath: string): boolean {
+  if (typeof value === 'boolean') return value;
+  if (value === 'true' || value === 1) return true;
+  if (value === 'false' || value === 0) return false;
+  throw new Error(`${fieldPath} must be a boolean. Got: ${String(value)}`);
+}
+
+// Gemini sometimes returns scores as floats (7.0, 7.5). Round to nearest integer.
+function coerceScore(value: unknown, fieldPath: string): number {
+  const n = typeof value === 'string' ? parseFloat(value) : Number(value);
+  if (isNaN(n)) throw new Error(`${fieldPath} must be a number. Got: ${String(value)}`);
+  return Math.round(n);
+}
 
 function validateScoreCheck(
   raw: RawScoreCheck | undefined,
@@ -93,14 +109,12 @@ function validateScoreCheck(
     throw new Error(`Quality check "${name}" is missing from the AI response`);
   }
 
-  if (typeof raw.pass !== 'boolean') {
-    throw new Error(`Quality check "${name}".pass must be a boolean. Got: ${typeof raw.pass}`);
-  }
+  const pass = coerceBool(raw.pass, `Quality check "${name}".pass`);
 
-  const score = raw.score;
-  if (!Number.isInteger(score) || (score as number) < 1 || (score as number) > 10) {
+  const score = coerceScore(raw.score, `Quality check "${name}".score`);
+  if (score < 1 || score > 10) {
     throw new Error(
-      `Quality check "${name}".score must be an integer between 1 and 10. Got: ${String(score)}`
+      `Quality check "${name}".score must be between 1 and 10. Got: ${score}`
     );
   }
 
@@ -108,19 +122,18 @@ function validateScoreCheck(
     throw new Error(`Quality check "${name}".reason is missing or empty`);
   }
 
-  const numScore = score as number;
   const threshold = SCORE_PASS_THRESHOLD[key] ?? DEFAULT_PASS_THRESHOLD;
 
   // Enforce score/pass consistency against this criterion's threshold.
-  if (numScore < threshold && raw.pass === true) {
+  if (score < threshold && pass === true) {
     throw new Error(
-      `Quality check "${name}" has score ${numScore} (<${threshold}) but pass:true — these are contradictory`
+      `Quality check "${name}" has score ${score} (<${threshold}) but pass:true — these are contradictory`
     );
   }
 
   return {
-    pass: raw.pass as boolean,
-    score: numScore,
+    pass,
+    score,
     reason: (raw.reason as string).trim(),
   };
 }
@@ -130,16 +143,14 @@ function validateBooleanCheck(raw: RawBooleanCheck | undefined, name: string): Q
     throw new Error(`Quality check "${name}" is missing from the AI response`);
   }
 
-  if (typeof raw.pass !== 'boolean') {
-    throw new Error(`Quality check "${name}".pass must be a boolean. Got: ${typeof raw.pass}`);
-  }
+  const pass = coerceBool(raw.pass, `Quality check "${name}".pass`);
 
   if (typeof raw.reason !== 'string' || (raw.reason as string).trim() === '') {
     throw new Error(`Quality check "${name}".reason is missing or empty`);
   }
 
   return {
-    pass: raw.pass as boolean,
+    pass,
     reason: (raw.reason as string).trim(),
   };
 }
@@ -213,14 +224,10 @@ export class QualityReviewAgent implements IQualityReviewAgent {
         throw new Error('Quality review response is missing the "checks" object');
       }
 
-      const overallScore = raw.overallScore;
-      if (
-        !Number.isInteger(overallScore) ||
-        (overallScore as number) < 0 ||
-        (overallScore as number) > 100
-      ) {
+      const overallScore = coerceScore(raw.overallScore, 'overallScore');
+      if (overallScore < 0 || overallScore > 100) {
         throw new Error(
-          `overallScore must be an integer between 0 and 100. Got: ${String(overallScore)}`
+          `overallScore must be between 0 and 100. Got: ${overallScore}`
         );
       }
 
@@ -235,7 +242,7 @@ export class QualityReviewAgent implements IQualityReviewAgent {
         ideaId: script.ideaId,
         pipelineRunId: script.pipelineRunId,
         overallDecision,
-        overallScore: overallScore as number,
+        overallScore,
         checks,
         createdAt: new Date(),
       };

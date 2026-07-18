@@ -26,14 +26,12 @@ A well-written AI-generated script will score 6–8 on most criteria.
 If all your scores are 9 or above, reconsider whether you have been rigorous enough.
 If all your scores are 5 or below, reconsider whether you are being too harsh.
 
-── hookStrength score anchors (pass threshold: 7 — higher than other criteria) ──
+── hookStrength score anchors (pass threshold: 6) ────────────
 
-hookStrength requires a score of 7 or above to pass:true. A score of 6 is competent
-but not scroll-stopping — the viewer can keep scrolling without feeling they're
-missing something irreplaceable. Only a genuine pattern interrupt passes:
-a reframe that challenges an assumption, a scene so specific the viewer
-recognises themselves before they can scroll, or a claim that creates
-immediate curiosity that cannot be deferred.
+hookStrength requires a score of 6 or above to pass:true. A score of 5 identifies the
+audience or names a pain but creates no pull — the viewer can scroll without feeling they'll
+miss anything. A score of 6 creates mild but genuine curiosity: the viewer wants to know
+what comes next. A score of 7+ is a genuine pattern interrupt that stops the scroll.
 
 Score 2  (pass:false)
   "Are you working too hard in your business?"
@@ -41,18 +39,16 @@ Score 2  (pass:false)
 
 Score 5  (pass:false)
   "If you're a coach putting in 50-hour weeks and still not hitting consistent months, listen up."
-  → Addresses the pain but no pattern interrupt. A viewer can keep scrolling without missing anything.
+  → Names the pain but creates no urgency. The viewer can keep scrolling without missing anything.
 
-Score 6  (pass:false — does not clear the 7-threshold)
+Score 6  (pass:true)
   "Most React developers never learn this, and it's costing them senior-level opportunities."
-  → Identifies the audience and hints at value. But "never learn this" is a well-worn content
-  formula. The curiosity is mild and deferrable — the viewer has seen this format before and
-  can scroll without anxiety. Competent. Not compelling.
+  → Creates mild but real curiosity. The viewer wants to know what they're missing.
+  Competent hook that earns the next few seconds of attention.
 
 Score 7  (pass:true)
   "Most coaches think they need more clients to scale. They don't."
-  → Counterintuitive claim creates immediate curiosity. Specific enough to feel targeted.
-  The reframe is the hook — the viewer has to know what they actually need instead.
+  → Counterintuitive reframe creates immediate curiosity. The viewer has to know what they need instead.
 
 Score 9  (pass:true)
   "You've got a full calendar, your clients are getting results, and you're still making less than your 9-to-5 paid. That's not a client problem — that's a leverage problem."

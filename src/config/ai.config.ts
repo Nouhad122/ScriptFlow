@@ -34,8 +34,8 @@ export interface AIConfig {
 }
 
 export const aiConfig: AIConfig = {
-  model: 'deepseek/deepseek-chat-v3',
-  maxTokens: 4096,
+  model: 'gemini-2.5-flash',
+  maxTokens: 3000,
   temperature: 1,
   siteUrl: 'https://scriptflow.app',
   appName: 'ScriptFlow',

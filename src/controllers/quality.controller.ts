@@ -87,7 +87,7 @@ export async function reviewScript(req: Request, res: Response): Promise<void> {
 
   // ── Run the review ──────────────────────────────────────────────────────────
 
-  const ai = new AIService(env.openrouterApiKey, {
+  const ai = new AIService(env.geminiApiKey, {
     model: aiConfig.model,
     maxTokens: aiConfig.maxTokens,
     temperature: qualityAgentConfig.temperature,

@@ -28,8 +28,9 @@ export function useRunQualityReview() {
       void queryClient.invalidateQueries({ queryKey: dashboardSummaryKey })
     },
 
-    onError: () => {
-      toast.error('Quality review failed.', { description: 'Please try again.' })
+    onError: (error) => {
+      const msg = (error as { message?: string }).message
+      toast.error('Quality review failed.', { description: msg ?? 'Please try again.' })
     },
   })
 }

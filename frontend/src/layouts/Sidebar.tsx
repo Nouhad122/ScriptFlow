@@ -20,13 +20,13 @@ interface NavItem {
 }
 
 const mainNav: NavItem[] = [
-  { to: '/',          icon: LayoutDashboard, label: 'Overview',          end: true },
-  { to: '/automation', icon: Zap,            label: 'Automation' },
-  { to: '/ideas',     icon: Lightbulb,       label: 'Idea Intelligence' },
-  { to: '/content',   icon: FileText,        label: 'Content Studio' },
-  { to: '/quality',   icon: ShieldCheck,     label: 'Quality Center' },
-  { to: '/history',   icon: History,         label: 'History' },
-  { to: '/clients',   icon: Users,           label: 'Clients' },
+  { to: '/app',              icon: LayoutDashboard, label: 'Overview',          end: true },
+  { to: '/app/automation',   icon: Zap,             label: 'Automation' },
+  { to: '/app/ideas',        icon: Lightbulb,       label: 'Idea Intelligence' },
+  { to: '/app/content',      icon: FileText,        label: 'Content Studio' },
+  { to: '/app/quality',      icon: ShieldCheck,     label: 'Quality Center' },
+  { to: '/app/history',      icon: History,         label: 'History' },
+  { to: '/app/clients',      icon: Users,           label: 'Clients' },
 ]
 
 function NavItemLink({ item }: { item: NavItem }) {
@@ -73,7 +73,7 @@ export function Sidebar() {
       <div className="px-3 pb-4">
         <Separator className="mb-3 bg-sidebar-border" />
         <NavLink
-          to="/settings"
+          to="/app/settings"
           className={({ isActive }) =>
             cn(
               'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',

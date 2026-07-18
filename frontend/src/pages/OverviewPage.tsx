@@ -128,8 +128,8 @@ function WorkflowSnapshot() {
 interface HealthItem { label: string; value: string }
 
 const healthItems: HealthItem[] = [
-  { label: 'AI Provider', value: 'OpenRouter' },
-  { label: 'Model',       value: 'DeepSeek Chat V3' },
+  { label: 'AI Provider', value: 'Google Gemini' },
+  { label: 'Model',       value: 'gemini-2.5-flash' },
   { label: 'Database',    value: 'SQLite (libsql)' },
   { label: 'Status',      value: 'All Systems' },
 ]

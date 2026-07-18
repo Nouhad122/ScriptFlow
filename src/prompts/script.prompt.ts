@@ -22,19 +22,85 @@
  *   is omitted rather than shown as "(none)".
  *
  * TARGET LENGTH:
- *   A 45–90 second short-form video requires approximately 100–220 spoken words.
- *   Each section has a target word count to keep total length on target.
- *   Production notes are not spoken — they are excluded from the word count.
+ *   Driven by the videoDuration parameter chosen by the user before generation.
+ *   Each preset maps to a total spoken word count and per-section word targets
+ *   so the AI distributes content proportionally regardless of duration.
  */
 
 import type { ClientContext, Idea, Script } from '../types';
+import type { VideoDuration } from '../types';
+
+// ---------------------------------------------------------------------------
+// Duration targets
+// ---------------------------------------------------------------------------
+
+interface DurationTargets {
+  totalWords: string;
+  seconds: string;
+  hookWords: string;
+  problemWords: string;
+  storyWords: string;
+  solutionWords: string;
+  proofWords: string;
+  ctaWords: string;
+}
+
+const DURATION_TARGETS: Record<VideoDuration, DurationTargets> = {
+  '30s': {
+    totalWords: '60–80',
+    seconds: '~30',
+    hookWords: '8–12',
+    problemWords: '12–18',
+    storyWords: '10–14',
+    solutionWords: '10–14',
+    proofWords: '12–18',
+    ctaWords: '8–12',
+  },
+  '45-60s': {
+    totalWords: '105–140',
+    seconds: '45–60',
+    hookWords: '12–18',
+    problemWords: '22–32',
+    storyWords: '18–26',
+    solutionWords: '18–26',
+    proofWords: '22–32',
+    ctaWords: '10–15',
+  },
+  '60-90s': {
+    totalWords: '140–210',
+    seconds: '60–90',
+    hookWords: '15–25',
+    problemWords: '30–50',
+    storyWords: '25–40',
+    solutionWords: '25–40',
+    proofWords: '30–50',
+    ctaWords: '15–25',
+  },
+  '90-120s': {
+    totalWords: '210–280',
+    seconds: '90–120',
+    hookWords: '20–30',
+    problemWords: '45–65',
+    storyWords: '38–55',
+    solutionWords: '38–55',
+    proofWords: '45–65',
+    ctaWords: '18–28',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Prompt builder
+// ---------------------------------------------------------------------------
 
 export function buildScriptPrompt(
   idea: Idea,
   context: ClientContext,
   memoryContext: Script[],
-  qualityFeedback?: string
+  qualityFeedback?: string,
+  videoDuration: VideoDuration = '60-90s',
 ): string {
+  const dt = DURATION_TARGETS[videoDuration];
+
   const avatarsBlock = (context.avatars ?? [])
     .map(
       (a) =>
@@ -78,9 +144,10 @@ Your task: write a production-ready script for the approved idea below.
 1. ONLY use proof from the PROOF BANK listed below. Never invent results, statistics, or testimonials.
 2. Match the BRAND VOICE exactly — do not deviate from tone or speaking style.
 3. Write for spoken delivery — conversational, natural, no corporate jargon.
-4. Target total spoken word count: 130–210 words (suitable for a 45–90 second video).
+4. REQUIRED spoken word count: ${dt.totalWords} words total across Hook 1 + Problem + Story + Solution + Proof + CTA. This is a hard requirement, not a suggestion. The user chose a ${dt.seconds} second video — honour that decision exactly.
 5. Write THREE distinct hook options. Each must approach the concept from a different angle.
 6. Do not repeat phrases, structures, or proof references from PREVIOUS SCRIPTS if they are listed below.
+7. Every JSON field (hook1, hook2, hook3, body.problem, body.story, body.solution, body.proof, body.cta) MUST be a non-empty string. Never return null or "" for these fields.
 
 ━━━ CLIENT CONTEXT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -125,34 +192,34 @@ ${qualityFeedback}
 
 ` : ''}━━━ SECTION GUIDELINES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-HOOK 1, 2, 3  (15–25 words each — three distinct opening lines)
+HOOK 1, 2, 3  (${dt.hookWords} words each — three distinct opening lines)
   The first 1–2 spoken sentences. Must make the viewer stop scrolling immediately.
   Each hook must approach the same core concept from a completely different angle:
     hook1 — lead with the pain or problem
     hook2 — lead with a result or proof
     hook3 — lead with a curiosity gap or counterintuitive claim
 
-PROBLEM  (30–50 words)
+PROBLEM  (${dt.problemWords} words)
   Agitate the pain. Make the target avatar feel completely seen and understood.
   Do not introduce the solution yet. Reference the specific target pain above.
   Use "you" language — speak directly to the viewer.
 
-STORY  (25–40 words)
+STORY  (${dt.storyWords} words)
   A narrative bridge from problem to solution. This is where emotional connection happens.
   Options: a brief client scenario, a relatable moment, a surprising insight, a contrast.
   This section must feel real and specific, not generic.
 
-SOLUTION  (25–40 words)
+SOLUTION  (${dt.solutionWords} words)
   Introduce ${context.offerMechanics.productName} as the answer. Keep it conversational.
   Name what changes for the viewer if they take action. Do not oversell.
   Let the proof section do the heavy lifting — keep this focused on the transformation.
 
-PROOF  (30–50 words)
+PROOF  (${dt.proofWords} words)
   Pull ONLY from the proof bank above. Be specific — exact numbers, exact names, exact outcomes.
   Quote or paraphrase directly. Never approximate in a way that changes the meaning.
   If multiple proof points are relevant, prioritise the one most directly tied to the idea's angle.
 
-CTA  (15–25 words)
+CTA  (${dt.ctaWords} words)
   One clear, specific, low-friction action. Use the CTA from offer mechanics above.
   Write it as a natural next step — not a command. Avoid "click the link below" clichés.
 
@@ -176,21 +243,36 @@ SECTION VISUALS  (one sentence per body section)
     "Cut to B-roll: time-lapse of a packed calendar or late-night desk scene."
     "On-screen text overlay: the specific result from the proof bank."
 
+━━━ WORD COUNT CHECKPOINT (complete before writing JSON) ━━━━━━━━
+
+Before writing your response, verify your word counts:
+  Hook 1:   ${dt.hookWords} words
+  Problem:  ${dt.problemWords} words
+  Story:    ${dt.storyWords} words
+  Solution: ${dt.solutionWords} words
+  Proof:    ${dt.proofWords} words
+  CTA:      ${dt.ctaWords} words
+  TOTAL:    ${dt.totalWords} words
+
+If any section is too short, expand it. If too long, trim it.
+Do not submit until the total is within the required range.
+
 ━━━ RESPONSE FORMAT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Return ONLY valid JSON. No markdown fences. No explanation. No extra fields.
 Start with { and end with }.
+ALL string fields below are REQUIRED and must be non-empty. Only "productionNotes" may be null.
 
 {
-  "hook1": "<first hook — pain/problem led>",
-  "hook2": "<second hook — result/proof led>",
-  "hook3": "<third hook — curiosity/counterintuitive led>",
+  "hook1": "<first hook — pain/problem led — REQUIRED non-empty string>",
+  "hook2": "<second hook — result/proof led — REQUIRED non-empty string>",
+  "hook3": "<third hook — curiosity/counterintuitive led — REQUIRED non-empty string>",
   "body": {
-    "problem": "<agitate the pain, make viewer feel seen>",
-    "story": "<narrative bridge — relatable scenario or insight>",
-    "solution": "<introduce the product/transformation>",
-    "proof": "<specific proof from the proof bank only>",
-    "cta": "<clear, natural call to action>"
+    "problem": "<agitate the pain, make viewer feel seen — REQUIRED non-empty string>",
+    "story": "<narrative bridge — relatable scenario or insight — REQUIRED non-empty string>",
+    "solution": "<introduce the product/transformation — REQUIRED non-empty string>",
+    "proof": "<specific proof from the proof bank only — REQUIRED non-empty string>",
+    "cta": "<clear, natural call to action — REQUIRED non-empty string>"
   },
   "productionNotes": "<brief filming notes or null>",
   "sectionPacing": {

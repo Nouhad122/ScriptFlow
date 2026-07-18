@@ -9,7 +9,7 @@
  * principle defined in the project plan.
  */
 
-import type { AgentResult, ClientContext, Idea, QualityReview, Script } from '../types';
+import type { AgentResult, ClientContext, Idea, QualityReview, Script, VideoDuration } from '../types';
 import type { MemoryMatch } from '../memory';
 
 /**
@@ -45,7 +45,8 @@ export interface IScriptAgent {
     idea: Idea,
     context: ClientContext,
     memoryContext: Script[],
-    qualityFeedback?: string
+    qualityFeedback?: string,
+    videoDuration?: VideoDuration
   ): Promise<AgentResult<Script>>;
 }
 

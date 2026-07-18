@@ -232,12 +232,16 @@ function CheckCard({
       )}
 
       {/* What this criterion evaluates */}
-      <p className="text-[11px] italic leading-relaxed text-muted-foreground/60">{criteria}</p>
+      <div className="rounded-md bg-muted/30 px-3 py-2">
+        <p className="text-[11px] font-medium text-muted-foreground/70 leading-relaxed">
+          <span className="font-semibold text-muted-foreground">Evaluated: </span>{criteria}
+        </p>
+      </div>
 
       {/* Relevant script excerpt — what the agent was reading when it scored this */}
       {excerpt && (
         <blockquote className="border-l-2 border-border pl-3">
-          <p className="line-clamp-2 text-xs italic leading-relaxed text-foreground/50">
+          <p className="line-clamp-2 text-[11px] italic leading-relaxed text-foreground/50">
             "{excerpt}"
           </p>
         </blockquote>
@@ -245,6 +249,9 @@ function CheckCard({
 
       {/* Agent's finding */}
       <div className={cn('rounded-md p-3', check.pass ? 'bg-muted/40' : 'bg-red-500/5')}>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50 mb-1">
+          Agent finding
+        </p>
         <p className="text-xs leading-relaxed text-muted-foreground">{check.reason}</p>
       </div>
     </div>
@@ -503,6 +510,9 @@ function ReviewSkeleton() {
   )
 }
 
+const SCORED_CHECKS  = CHECK_ENTRIES.slice(0, 7)  // hookStrength … brandVoice
+const BINARY_CHECKS  = CHECK_ENTRIES.slice(7)     // fabrication, length, structure
+
 function PendingReviewPanel({
   onRun,
   isRunning,
@@ -512,29 +522,26 @@ function PendingReviewPanel({
   isRunning: boolean
   clientExists: boolean
 }) {
-
   return (
-    <div className="flex h-full items-center justify-center">
-      <m.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="space-y-4 text-center"
-      >
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <ShieldCheck className="h-6 w-6 text-primary" />
-        </div>
+    <m.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="space-y-5 p-6"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">No review yet</p>
+          <p className="text-sm font-semibold text-foreground">No review yet</p>
           <p className="text-xs text-muted-foreground">
             {clientExists
-              ? 'Run the quality review agent on this script.'
-              : 'Client context not found for this script.'}
+              ? 'The agent will evaluate this script against 10 criteria below.'
+              : 'Client context not found — run a new pipeline with this client first.'}
           </p>
         </div>
         <Button
           size="sm"
-          className="gap-1.5"
+          className="shrink-0 gap-1.5"
           disabled={isRunning || !clientExists}
           onClick={onRun}
         >
@@ -545,8 +552,58 @@ function PendingReviewPanel({
           )}
           {isRunning ? 'Reviewing…' : 'Run Quality Review'}
         </Button>
-      </m.div>
-    </div>
+      </div>
+
+      {/* Scoring rule */}
+      <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-[11px] text-muted-foreground space-y-1">
+        <p><span className="font-semibold text-foreground">How scoring works:</span> Every one of the 10 checks must pass. A single failure = <span className="font-medium text-red-400">HOLD</span>.</p>
+        <p>Scored checks (1–10): Hook Strength needs <span className="font-medium">7+</span> to pass. All others need <span className="font-medium">6+</span>.</p>
+        <p>Binary checks (fabrication, length, structure): pass or fail based on a defined rule.</p>
+      </div>
+
+      {/* Scored criteria */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+          Scored checks — 1 to 10
+        </p>
+        <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+          {SCORED_CHECKS.map(([key, label], i) => (
+            <div key={key} className="flex items-start gap-3 px-4 py-3 bg-card">
+              <span className="mt-0.5 w-4 shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground/40">
+                {i + 1}
+              </span>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs font-semibold text-foreground">{label}</p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">{CHECK_CRITERIA[key]}</p>
+              </div>
+              <span className="shrink-0 text-[10px] text-muted-foreground/50 mt-0.5">
+                {key === 'hookStrength' ? '7+' : '6+'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Binary criteria */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+          Binary checks — pass or fail
+        </p>
+        <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+          {BINARY_CHECKS.map(([key, label], i) => (
+            <div key={key} className="flex items-start gap-3 px-4 py-3 bg-card">
+              <span className="mt-0.5 w-4 shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground/40">
+                {SCORED_CHECKS.length + i + 1}
+              </span>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs font-semibold text-foreground">{label}</p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">{CHECK_CRITERIA[key]}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </m.div>
   )
 }
 
@@ -564,11 +621,19 @@ export function QualityCenterPage() {
   } = useScripts()
 
   const { data: clients = [] } = useClients()
-  const reviewQuery        = useReviewForScript(selectedScriptId)
-  const reviewMutation     = useRunQualityReview()
-  const regenerateMutation = useRegenerateScript()
 
   const selectedScript = scripts.find(s => s.id === selectedScriptId) ?? null
+
+  // Only fetch the review when the script has a status that guarantees one exists.
+  // pending_review scripts have no review yet — skip the request to avoid a noisy 404.
+  const reviewScriptId =
+    selectedScript?.status === 'passed' || selectedScript?.status === 'held'
+      ? selectedScriptId
+      : null
+
+  const reviewQuery        = useReviewForScript(reviewScriptId)
+  const reviewMutation     = useRunQualityReview()
+  const regenerateMutation = useRegenerateScript()
 
   const countByStatus = useMemo(() => {
     const counts: Record<string, number> = { all: scripts.length }

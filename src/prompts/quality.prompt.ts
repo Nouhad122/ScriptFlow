@@ -100,15 +100,14 @@ use your judgment against the specific rule defined.
 
 ── SCORED CRITERIA (1–10) ─────────────────────────────────────
 
-1. hookStrength — Does Hook 1 make the target avatar stop scrolling in the first 3 seconds?
-   Evaluate: pattern interrupt, emotional relevance to "${idea.targetPain}", immediate engagement.
-   Is the hook directly tied to the approved angle: "${idea.angle}"?
-   A hook that merely identifies the audience, states a pain, or uses a familiar "did you know /
-   here's why / most people don't know" formula scores 5–6. It is competent, not compelling.
-   Only award 7+ for a genuine pattern interrupt: a reframe that challenges an assumption the
-   target avatar holds, a scene so specific the viewer recognises themselves before they can scroll,
-   or a claim that creates urgency the viewer cannot defer. A score of 6 does NOT pass.
-   Score 1–6 = pass:false. Score 7–10 = pass:true.
+1. hookStrength — Does Hook 1 earn the viewer's next few seconds of attention?
+   Evaluate: emotional relevance to "${idea.targetPain}", engagement, directness.
+   Is the hook tied to the approved angle: "${idea.angle}"?
+   A hook that merely names the audience or restates a pain without any pull scores 4–5.
+   A hook that creates mild but genuine curiosity — the viewer wants to know what comes next —
+   earns a 6 and passes. A genuine pattern interrupt (reframe, counterintuitive claim, or a scene
+   so specific the viewer recognises themselves) earns 7+.
+   Score 1–5 = pass:false. Score 6–10 = pass:true.
 
 2. problemClarity — Is the problem section clear and specific to the target avatar?
    Evaluate: does the viewer feel seen? Is "${idea.targetPain}" addressed directly?
@@ -153,11 +152,12 @@ use your judgment against the specific rule defined.
    Vague claims like "many clients" are acceptable. Named results or quoted numbers are not.
    Be strict: "Marcus went from X to Y" only passes if that exact claim is in the proof bank.
 
-9. length — Is the script within the target spoken word count?
+9. length — Is the script within a reasonable spoken word count for short-form video?
    Count the spoken words in: Hook 1 + Problem + Story + Solution + Proof + CTA.
    (Do NOT count Hook 2, Hook 3, or Production Notes — they are not in the main spoken script.)
-   Target: 100–220 spoken words (45–90 second video).
-   pass:true if within range. pass:false if clearly over or under.
+   Valid range: 60–280 spoken words (covers all durations from 30-second to 120-second videos).
+   pass:false only if the total is clearly under 60 words (too short to deliver any value)
+   or clearly over 280 words (too long for short-form video).
 
 10. structure — Does the script follow the required narrative arc?
     Required order: Problem → Story → Solution → Proof → CTA.
