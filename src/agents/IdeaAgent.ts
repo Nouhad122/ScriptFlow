@@ -167,7 +167,7 @@ export class IdeaAgent implements IIdeaAgent {
       // Fallback: if the model omits targetAvatar but the client has exactly one avatar,
       // fill it in rather than failing the whole pipeline.
       if (Array.isArray(raw) && context.avatars.length === 1) {
-        for (const item of raw as Record<string, unknown>[]) {
+        for (const item of raw as unknown as Record<string, unknown>[]) {
           if (!item.targetAvatar || (item.targetAvatar as string).trim() === '') {
             item.targetAvatar = context.avatars[0].name;
           }
